@@ -94,7 +94,8 @@ def main() -> None:
     # other events before updating (and allowing player to move)
     player_x_new: float = 0
     player_y_new: float = 0
-    move_attempt: bool = False
+    move_attempt_x: bool = False
+    move_attempt_y: bool = False
 
     running = True
 
@@ -105,7 +106,8 @@ def main() -> None:
         direction_y = 0
         
         # clear flag showing attempted movement in this frame
-        move_attempt = False
+        move_attempt_x = False
+        move_attempt_y = False
 
         elapsed_ms = clock.tick(FRAMES_PER_SECOND)
         delta_secs = elapsed_ms / 1000
@@ -123,20 +125,20 @@ def main() -> None:
        
         if pressed_keys[pygame.K_LEFT]:
             direction_x = -1
-            move_attempt = True
+            move_attempt_x = True
         elif pressed_keys[pygame.K_RIGHT]:
             direction_x = 1
-            move_attempt = True
+            move_attempt_x = True
         if pressed_keys[pygame.K_UP]:
             direction_y = -1
-            move_attempt = True
+            move_attempt_y = True
         elif pressed_keys[pygame.K_DOWN]:
             direction_y = 1
-            move_attempt = True
+            move_attempt_y = True
         
         # if they're trying to move, calculate where that would move them to and if that would be a collision
         # before allowing the change
-        if move_attempt:
+        if move_attempt_x or move_attempt_y:
             player_x_new = player_x + (direction_x * PLAYER_SPEED * delta_secs)
             player_y_new = player_y + (direction_y * PLAYER_SPEED * delta_secs)
 
@@ -151,6 +153,29 @@ def main() -> None:
             if proposed_pos_rect.collidelist(col_rect_list) == -1:
                 player_x = player_x_new
                 player_y = player_y_new
+            elif move_attempt_x and move_attempt_y:
+                # player is trying to move diagonally, see if one of those directions is ok
+                # and if so, move in the allowable direction.
+                # both might fail or max one of them might be ok
+                
+                # test x movement
+                proposed_pos_rect = pygame.Rect(player_x_new + PLAYER_X_COLLISION_ADJ, 
+                                player_y + PLAYER_Y_COLLISION_ADJ, 
+                                PLAYER_COLLISION_WIDTH,
+                                PLAYER_COLLISION_HEIGHT)
+                
+                # if we can move in the x direction, set the new x position
+                if proposed_pos_rect.collidelist(col_rect_list) == -1:
+                    player_x = player_x_new
+                else:
+                    # if we can't move in the X direction, test Y and update accordingly
+                    proposed_pos_rect = pygame.Rect(player_x + PLAYER_X_COLLISION_ADJ, 
+                    player_y_new + PLAYER_Y_COLLISION_ADJ, 
+                    PLAYER_COLLISION_WIDTH,
+                    PLAYER_COLLISION_HEIGHT)
+
+                    if proposed_pos_rect.collidelist(col_rect_list) == -1:
+                        player_y = player_y_new
 
         # Draw each visible tile layer from bottom to top.
         for layer in tiled_map.visible_layers:
