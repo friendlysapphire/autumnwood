@@ -1,0 +1,107 @@
+from pathlib import Path
+import pygame
+from typing import Literal
+
+
+type DirectionValue = Literal[-1, 0, 1]
+
+class Player:
+
+    def __init__(self,
+                 name: str,
+                 sprite_path: str | Path,
+                 spawn_offset_x: int,
+                 spawn_offset_y: int,
+                 collision_offset_x: int,
+                 collision_offset_y: int,
+                 collision_box_height: int,
+                 collision_box_width: int,
+                 default_speed: float):
+        
+        self.name = name
+
+        if isinstance(sprite_path, Path):
+            self._sprite_path = sprite_path
+        else:
+            self._sprite_path = Path(sprite_path)
+
+        # We apply these values once on spawn so the character appears centered at the spawn location.
+        # Otherwise, the sprite's top-left corner would start at the spawn location,
+        # making the character appear down and to the right.
+        self._spawn_offset_x = spawn_offset_x
+        self._spawn_offset_y = spawn_offset_y
+
+        # These x and y offsets define the collision box's top-left corner
+        # relative to the sprite, typically around the character's feet.
+        # (we are offsetting into the sprite image here to find the top left of the feet (or where we want
+        # the collision rect to be based))
+        self._collision_offset_x = collision_offset_x
+        self._collision_offset_y = collision_offset_y
+
+        # how much height and width the collision box should be from the top left defined by collision_offset_x and y
+        self._collision_box_height = collision_box_height
+        self._collision_box_width = collision_box_width
+
+        # speed in pixels per second 
+        self._default_speed = default_speed
+        self.speed = default_speed
+
+        # these are set in the player.spawn() function 
+        self.world_x: float | None = None
+        self.world_y: float | None = None
+        self.direction_x: DirectionValue = 0
+        self.direction_y: DirectionValue = 0
+
+        # set up our sprite
+        player_sprite_sheet = pygame.image.load(self._sprite_path)
+
+        # convert_alpha() requires Pygame’s display mode to have already been established. 
+        # ---> constructing a Player depends on display initialization having happened <----
+        player_sprite_sheet = player_sprite_sheet.convert_alpha()
+       
+        # TODO: This hard-coded rectangle selects the Elf Mage's first frame.
+        # Move character-specific sprite-sheet details into an animation or sprite configuration later.
+        sprite_rect = pygame.Rect(0, 0, 64, 64) 
+
+        self.sprite = player_sprite_sheet.subsurface(sprite_rect)
+
+        # Track whether spawn() has placed the player on the map.
+        # Position-dependent methods should not run before this becomes True.
+        self.spawned = False
+
+    # Place the player on the map and establish the world position used from this point forward.
+    def spawn(self, x: float, y: float, direction_x: DirectionValue = 0, direction_y: DirectionValue = 0) -> None:
+        self.world_x = x - self._spawn_offset_x
+        self.world_y = y - self._spawn_offset_y
+        self.direction_x = direction_x
+        self.direction_y = direction_y
+        self.spawned = True
+
+    def get_collision_rect(self, 
+                           x: float | None = None, 
+                           y: float | None = None
+                           ) -> pygame.Rect:
+           
+        if not self.spawned:
+            raise RuntimeError("Player must be spawned to generate a collision rect.")
+           
+        # Use the player's current position when no coordinates are supplied.
+        # Explicitly provided coordinates let us test a proposed position before actually moving the player.
+        if x is None and y is None:
+            use_x = self.world_x
+            use_y = self.world_y
+        elif x is not None and y is not None:
+            use_x = x
+            use_y = y
+        else:
+            raise ValueError("In get_collision_rect both x and y must be none or both must be a value.")
+
+        # Translate the sprite's top-left world position to the collision box's position.    
+        return pygame.Rect(use_x + self._collision_offset_x,
+                           use_y + self._collision_offset_y,
+                           self._collision_box_width,
+                           self._collision_box_height)
+    
+
+
+

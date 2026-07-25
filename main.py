@@ -1,4 +1,5 @@
 from pathlib import Path
+from player import Player, DirectionValue
 
 import pygame
 import pytmx
@@ -72,23 +73,20 @@ def main() -> None:
     # get player start location
     spawn_x, spawn_y = get_player_start(tiled_map)
 
-
-    # The spawn point is where we want the character centered at the feet.
-    # Shift the sprite up and left because Pygame draws images from their top-left corner.
-    player_x = spawn_x - PLAYER_X_OFFSET
-    player_y = spawn_y - PLAYER_Y_OFFSET
+    player = Player(name="Elf Mage",
+                    sprite_path=MAIN_CHAR_FILE_PATH,
+                    spawn_offset_x=PLAYER_X_OFFSET,
+                    spawn_offset_y=PLAYER_Y_OFFSET,
+                    collision_offset_x=PLAYER_X_COLLISION_ADJ,
+                    collision_offset_y=PLAYER_Y_COLLISION_ADJ,
+                    collision_box_height=PLAYER_COLLISION_HEIGHT,
+                    collision_box_width=PLAYER_COLLISION_WIDTH,
+                    default_speed=PLAYER_SPEED)
+    
+    player.spawn(spawn_x, spawn_y)
 
     # get all the collision rects for our map
     col_rect_list: list[pygame.Rect] = get_collision_rects(tiled_map)
-
-    player_sprite_sheet = pygame.image.load(MAIN_CHAR_FILE_PATH)
-    player_sprite_sheet = player_sprite_sheet.convert_alpha()
-    sprite_rect = pygame.Rect(0, 0, 64, 64) 
-    player_sprite = player_sprite_sheet.subsurface(sprite_rect)
-
-    # direction player is moving
-    direction_x: int = 0
-    direction_y: int = 0
 
     # where player would be with movement based on keypress. used to check for collisions or 
     # other events before updating (and allowing player to move)
@@ -101,9 +99,9 @@ def main() -> None:
 
     while running:
 
-        # clear movement from last frame
-        direction_x  = 0
-        direction_y = 0
+        # clear movement from last frame. +1, 0, or -1. 
+        player.direction_x  = 0
+        player.direction_y = 0
         
         # clear flag showing attempted movement in this frame
         move_attempt_x = False
@@ -124,58 +122,49 @@ def main() -> None:
         pressed_keys = pygame.key.get_pressed()
        
         if pressed_keys[pygame.K_LEFT]:
-            direction_x = -1
+            player.direction_x = -1
             move_attempt_x = True
         elif pressed_keys[pygame.K_RIGHT]:
-            direction_x = 1
+            player.direction_x = 1
             move_attempt_x = True
         if pressed_keys[pygame.K_UP]:
-            direction_y = -1
+            player.direction_y = -1
             move_attempt_y = True
         elif pressed_keys[pygame.K_DOWN]:
-            direction_y = 1
+            player.direction_y = 1
             move_attempt_y = True
         
         # if they're trying to move, calculate where that would move them to and if that would be a collision
         # before allowing the change
         if move_attempt_x or move_attempt_y:
-            player_x_new = player_x + (direction_x * PLAYER_SPEED * delta_secs)
-            player_y_new = player_y + (direction_y * PLAYER_SPEED * delta_secs)
+            player_x_new = player.world_x + (player.direction_x * player.speed * delta_secs)
+            player_y_new = player.world_y + (player.direction_y * player.speed * delta_secs)
 
             # see if the new player location would be a collision, if so, keep old player location
             # use the adjustment factors so we're using a small rect around the feet only
-            proposed_pos_rect = pygame.Rect(player_x_new + PLAYER_X_COLLISION_ADJ, 
-                                            player_y_new + PLAYER_Y_COLLISION_ADJ, 
-                                            PLAYER_COLLISION_WIDTH,
-                                            PLAYER_COLLISION_HEIGHT)
+            proposed_pos_rect = player.get_collision_rect(player_x_new, player_y_new)
             
             # if no collision, intended new place becomes current place
             if proposed_pos_rect.collidelist(col_rect_list) == -1:
-                player_x = player_x_new
-                player_y = player_y_new
+                player.world_x = player_x_new
+                player.world_y = player_y_new
             elif move_attempt_x and move_attempt_y:
                 # player is trying to move diagonally, see if one of those directions is ok
                 # and if so, move in the allowable direction.
                 # both might fail or max one of them might be ok
                 
                 # test x movement
-                proposed_pos_rect = pygame.Rect(player_x_new + PLAYER_X_COLLISION_ADJ, 
-                                player_y + PLAYER_Y_COLLISION_ADJ, 
-                                PLAYER_COLLISION_WIDTH,
-                                PLAYER_COLLISION_HEIGHT)
-                
+                proposed_pos_rect = player.get_collision_rect(player_x_new, player.world_y)
+
                 # if we can move in the x direction, set the new x position
                 if proposed_pos_rect.collidelist(col_rect_list) == -1:
-                    player_x = player_x_new
+                    player.world_x = player_x_new
                 else:
                     # if we can't move in the X direction, test Y and update accordingly
-                    proposed_pos_rect = pygame.Rect(player_x + PLAYER_X_COLLISION_ADJ, 
-                    player_y_new + PLAYER_Y_COLLISION_ADJ, 
-                    PLAYER_COLLISION_WIDTH,
-                    PLAYER_COLLISION_HEIGHT)
+                    proposed_pos_rect = player.get_collision_rect(player.world_x, player_y_new)
 
                     if proposed_pos_rect.collidelist(col_rect_list) == -1:
-                        player_y = player_y_new
+                        player.world_y = player_y_new
 
         # Draw each visible tile layer from bottom to top.
         for layer in tiled_map.visible_layers:
@@ -186,7 +175,7 @@ def main() -> None:
 
                     screen.blit(tile_image, (screen_x, screen_y))
         
-        screen.blit(player_sprite,(player_x, player_y))
+        screen.blit(player.sprite,(player.world_x, player.world_y))
 
         # Make the completed frame visible
         pygame.display.flip()
