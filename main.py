@@ -76,7 +76,7 @@ def get_player_start(tiled_map: pytmx.TiledMap) -> tuple[float, float]:
 
 # A proposed position is valid only if the character stays within the map
 # and its collision rectangle does not overlap a map obstacle.
-def is_proposed_player_move_valid(proposed_x: float, 
+def is_proposed_player_move_valid(*,proposed_x: float, 
                                   proposed_y: float, 
                                   char: Character, 
                                   map_collision_rects: list[pygame.Rect],
