@@ -8,6 +8,7 @@ type DirectionValue = Literal[-1, 0, 1]
 class Character:
 
     def __init__(self,
+                 *,
                  name: str,
                  sprite_path: str | Path,
                  spawn_offset_x: int,

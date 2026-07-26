@@ -79,7 +79,7 @@ def get_player_start(tiled_map: pytmx.TiledMap) -> tuple[float, float]:
 def is_proposed_player_move_valid(proposed_x: float, 
                                   proposed_y: float, 
                                   char: Character, 
-                                  map_collision_list: list[pygame.Rect],
+                                  map_collision_rects: list[pygame.Rect],
                                   map_width: int,
                                   map_height: int
                                   ) -> bool:
@@ -87,7 +87,7 @@ def is_proposed_player_move_valid(proposed_x: float,
     in_bounds = char.is_within_bounds(proposed_x, proposed_y, x_size=map_width, y_size=map_height)
 
     player_collision_rect = char.get_collision_rect(proposed_x, proposed_y)
-    no_collision = player_collision_rect.collidelist(map_collision_list) == -1
+    no_collision = player_collision_rect.collidelist(map_collision_rects) == -1
 
     return in_bounds and no_collision
 
@@ -99,7 +99,7 @@ def update_player_position(move_attempt_x: bool,
                            delta_secs: float,
                            map_width: int,
                            map_height: int,
-                           col_rect_list: list[pygame.Rect]
+                           map_collision_rects: list[pygame.Rect]
                            ) -> None:
     
     # Skip movement calculations when neither axis has input.
@@ -115,7 +115,7 @@ def update_player_position(move_attempt_x: bool,
         if is_proposed_player_move_valid(proposed_x,
                                          proposed_y,
                                          player,
-                                         col_rect_list,
+                                         map_collision_rects,
                                          map_width,
                                          map_height):
             player.world_x = proposed_x
@@ -124,7 +124,7 @@ def update_player_position(move_attempt_x: bool,
         elif is_proposed_player_move_valid(proposed_x,
                                            player.world_y,
                                            player,
-                                           col_rect_list,
+                                           map_collision_rects,
                                            map_width,
                                            map_height):
             player.world_x = proposed_x
@@ -132,7 +132,7 @@ def update_player_position(move_attempt_x: bool,
         elif is_proposed_player_move_valid(player.world_x,
                                            proposed_y,
                                            player,
-                                           col_rect_list,
+                                           map_collision_rects,
                                            map_width,
                                            map_height):
             player.world_y = proposed_y
@@ -142,7 +142,7 @@ def update_player_position(move_attempt_x: bool,
         if is_proposed_player_move_valid(proposed_x,
                                          proposed_y,
                                          player,
-                                         col_rect_list,
+                                         map_collision_rects,
                                          map_width,
                                          map_height):
             player.world_x = proposed_x
@@ -152,7 +152,7 @@ def update_player_position(move_attempt_x: bool,
         if is_proposed_player_move_valid(proposed_x,
                                          proposed_y,
                                          player,
-                                         col_rect_list,
+                                         map_collision_rects,
                                          map_width,
                                          map_height):
             player.world_y = proposed_y
@@ -195,7 +195,7 @@ def main() -> None:
     player.spawn(spawn_x, spawn_y)
 
     # get all the collision rects for our map
-    col_rect_list: list[pygame.Rect] = get_collision_rects(tiled_map)
+    map_collision_rects: list[pygame.Rect] = get_collision_rects(tiled_map)
 
     # Track whether this frame contains horizontal or vertical movement input.
     move_attempt_x: bool = False
@@ -247,7 +247,7 @@ def main() -> None:
                                delta_secs,
                                map_width,
                                map_height,
-                               col_rect_list)
+                               map_collision_rects)
 
         # Draw each visible tile layer from bottom to top.
         for layer in tiled_map.visible_layers:
