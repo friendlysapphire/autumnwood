@@ -1,5 +1,5 @@
 from pathlib import Path
-from player import Player, DirectionValue
+from character import Character
 
 import pygame
 import pytmx
@@ -13,21 +13,31 @@ FRAMES_PER_SECOND = 60
 PROJECT_ROOT = Path(__file__).parent
 MAP_PATH = PROJECT_ROOT / "resources" / "testmap.tmx"
 
-# playr speed is in pixels per second
-PLAYER_SPEED = 120
+
+# Elf Mage player construction details
+# player speed is in pixels per second
+ELF_MAGE_PLAYER_SPEED = 120
 
 # Pygame draws from the image's top-left, we want to be centered aroound the feet. w/o this adjustment
 # char would appear in world down and to right of where the spawn point visually appears on the map.
-PLAYER_X_OFFSET = 32
-PLAYER_Y_OFFSET = 52
+ELF_MAGE_SPAWN_OFFSET_X = 32
+ELF_MAGE_SPAWN_OFFSET_Y = 52
 
-# collision based on small rect around the feet, not whole sprite
-PLAYER_X_COLLISION_ADJ = 24
-PLAYER_Y_COLLISION_ADJ = 46
-PLAYER_COLLISION_WIDTH = 16
-PLAYER_COLLISION_HEIGHT = 10
+# collision based on small rect around the feet, not whole sprite. defines a rect inside the sprite image
+# x and y are the top-left coord
+ELF_MAGE_COLLISION_RECT_X = 23
+ELF_MAGE_COLLISION_RECT_Y = 44
+ELF_MAGE_COLLISION_RECT_WIDTH = 18
+ELF_MAGE_COLLISION_RECT_HEIGHT = 6
 
-MAIN_CHAR_FILE_PATH = (
+# lines in from edges of sprite image the charater (walking sprite) begins as solid. useful for drawing 
+# up to edge of window correctly. 
+ELF_MAGE_VISIBLE_TOP_OFFSET = 12
+ELF_MAGE_VISIBLE_BOTTOM_OFFSET = 15
+ELF_MAGE_VISIBLE_LEFT_OFFSET = 19
+ELF_MAGE_VISIBLE_RIGHT_OFFSET = 16
+
+ELF_MAGE_FILE_PATH = (
     PROJECT_ROOT
     / "resources"
     / "PixelWorldSprites"
@@ -70,19 +80,25 @@ def main() -> None:
     # Load the Tiled map and its referenced tile images.
     tiled_map = load_pygame(MAP_PATH)
 
+    player = Character(name="Elf Mage",
+                    sprite_path=ELF_MAGE_FILE_PATH,
+                    spawn_offset_x=ELF_MAGE_SPAWN_OFFSET_X,
+                    spawn_offset_y=ELF_MAGE_SPAWN_OFFSET_Y,
+                    collision_offset_x=ELF_MAGE_COLLISION_RECT_X,
+                    collision_offset_y=ELF_MAGE_COLLISION_RECT_Y,
+                    collision_box_height=ELF_MAGE_COLLISION_RECT_HEIGHT,
+                    collision_box_width=ELF_MAGE_COLLISION_RECT_WIDTH,
+                    default_speed=ELF_MAGE_PLAYER_SPEED,
+                    visible_top_offset=ELF_MAGE_VISIBLE_TOP_OFFSET,
+                    visible_bottom_offset=ELF_MAGE_VISIBLE_BOTTOM_OFFSET,
+                    visible_left_offset=ELF_MAGE_VISIBLE_LEFT_OFFSET,
+                    visible_right_offset=ELF_MAGE_VISIBLE_RIGHT_OFFSET
+                    )
+    
     # get player start location
     spawn_x, spawn_y = get_player_start(tiled_map)
 
-    player = Player(name="Elf Mage",
-                    sprite_path=MAIN_CHAR_FILE_PATH,
-                    spawn_offset_x=PLAYER_X_OFFSET,
-                    spawn_offset_y=PLAYER_Y_OFFSET,
-                    collision_offset_x=PLAYER_X_COLLISION_ADJ,
-                    collision_offset_y=PLAYER_Y_COLLISION_ADJ,
-                    collision_box_height=PLAYER_COLLISION_HEIGHT,
-                    collision_box_width=PLAYER_COLLISION_WIDTH,
-                    default_speed=PLAYER_SPEED)
-    
+    # can't use the Player on the map / in the world until we spawn()
     player.spawn(spawn_x, spawn_y)
 
     # get all the collision rects for our map
@@ -141,30 +157,35 @@ def main() -> None:
             player_y_new = player.world_y + (player.direction_y * player.speed * delta_secs)
 
             # see if the new player location would be a collision, if so, keep old player location
-            # use the adjustment factors so we're using a small rect around the feet only
-            proposed_pos_rect = player.get_collision_rect(player_x_new, player_y_new)
+            proposed_pos_col_rect = player.get_collision_rect(player_x_new, player_y_new)
+
+            if (player_x_new + player.visible_left_offset >= 1 and 
+                player_x_new + player.sprite.get_width() - player.visible_right_offset <= WINDOW_WIDTH and 
+                player_y_new + player.visible_top_offset >= 1 and 
+                player_y_new + player.sprite.get_height() - player.visible_bottom_offset <= WINDOW_HEIGHT
+                ):
             
-            # if no collision, intended new place becomes current place
-            if proposed_pos_rect.collidelist(col_rect_list) == -1:
-                player.world_x = player_x_new
-                player.world_y = player_y_new
-            elif move_attempt_x and move_attempt_y:
-                # player is trying to move diagonally, see if one of those directions is ok
-                # and if so, move in the allowable direction.
-                # both might fail or max one of them might be ok
-                
-                # test x movement
-                proposed_pos_rect = player.get_collision_rect(player_x_new, player.world_y)
-
-                # if we can move in the x direction, set the new x position
-                if proposed_pos_rect.collidelist(col_rect_list) == -1:
+                # if no collision, intended new place becomes current place
+                if proposed_pos_col_rect.collidelist(col_rect_list) == -1:
                     player.world_x = player_x_new
-                else:
-                    # if we can't move in the X direction, test Y and update accordingly
-                    proposed_pos_rect = player.get_collision_rect(player.world_x, player_y_new)
+                    player.world_y = player_y_new
+                elif move_attempt_x and move_attempt_y:
+                    # player is trying to move diagonally, see if one of those directions is ok
+                    # and if so, move in the allowable direction.
+                    # both might fail or max one of them might be ok
+                    
+                    # test x movement
+                    proposed_pos_col_rect = player.get_collision_rect(player_x_new, player.world_y)
 
-                    if proposed_pos_rect.collidelist(col_rect_list) == -1:
-                        player.world_y = player_y_new
+                    # if we can move in the x direction, set the new x position
+                    if proposed_pos_col_rect.collidelist(col_rect_list) == -1:
+                        player.world_x = player_x_new
+                    else:
+                        # if we can't move in the X direction, test Y and update accordingly
+                        proposed_pos_col_rect = player.get_collision_rect(player.world_x, player_y_new)
+
+                        if proposed_pos_col_rect.collidelist(col_rect_list) == -1:
+                            player.world_y = player_y_new
 
         # Draw each visible tile layer from bottom to top.
         for layer in tiled_map.visible_layers:

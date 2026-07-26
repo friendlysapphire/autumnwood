@@ -5,7 +5,7 @@ from typing import Literal
 
 type DirectionValue = Literal[-1, 0, 1]
 
-class Player:
+class Character:
 
     def __init__(self,
                  name: str,
@@ -16,7 +16,11 @@ class Player:
                  collision_offset_y: int,
                  collision_box_height: int,
                  collision_box_width: int,
-                 default_speed: float):
+                 default_speed: float,
+                 visible_top_offset: int = 0,
+                 visible_bottom_offset: int = 0,
+                 visible_left_offset: int = 0,
+                 visible_right_offset: int = 0):
         
         self.name = name
 
@@ -46,7 +50,16 @@ class Player:
         self._default_speed = default_speed
         self.speed = default_speed
 
-        # these are set in the player.spawn() function 
+        # how many lines down into the sprite image does the character begin.
+        # can be used for example to check if char would be draw off the top/bottom/left/right of the screen
+        # note: some aprite animations may have different bounds, eg combat animations. this simple version is 
+        # for walking sprite dimensions, when you might be walking at the edge of a map.
+        self.visible_top_offset = visible_top_offset
+        self.visible_bottom_offset = visible_bottom_offset
+        self.visible_left_offset = visible_left_offset
+        self.visible_right_offset = visible_right_offset
+
+        # these are set in the charaacter.spawn() function 
         self.world_x: float | None = None
         self.world_y: float | None = None
         self.direction_x: DirectionValue = 0
