@@ -101,6 +101,8 @@ class Character:
         self.direction_y = direction_y
         self.spawned = True
 
+    # Return the character's collision rectangle at its current world position,
+    # or at a supplied position when testing a proposed move.
     def get_collision_rect(
         self, x: float | None = None, y: float | None = None
     ) -> pygame.Rect:
@@ -149,10 +151,8 @@ class Character:
 
         in_bounds = (
             proposed_x + self.visible_left_offset >= 1
-            and proposed_x + self.sprite.get_width() - self.visible_right_offset
-            <= x_size
+            and proposed_x + self.sprite.get_width() - self.visible_right_offset <= x_size
             and proposed_y + self.visible_top_offset >= 1
-            and proposed_y + self.sprite.get_height() - self.visible_bottom_offset
-            <= y_size
+            and proposed_y + self.sprite.get_height() - self.visible_bottom_offset <= y_size
         )
         return in_bounds

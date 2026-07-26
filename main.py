@@ -222,6 +222,9 @@ def main() -> None:
     move_attempt_x: bool = False
     move_attempt_y: bool = False
 
+    # debug map features toggle
+    show_map_debug_features = False
+
     running = True
 
     while running:
@@ -239,8 +242,15 @@ def main() -> None:
 
         # Read pending window and input events.
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+            
+            match event.type:
+                case pygame.QUIT:
+                    running = False
+
+                case pygame.KEYDOWN:
+                    if event.key == pygame.K_BACKQUOTE:
+                        show_map_debug_features = not show_map_debug_features
+
 
         # Clear the previous frame before drawing the map again.
         screen.fill("black")
@@ -254,6 +264,7 @@ def main() -> None:
         elif pressed_keys[pygame.K_RIGHT]:
             player.direction_x = 1
             move_attempt_x = True
+
         if pressed_keys[pygame.K_UP]:
             player.direction_y = -1
             move_attempt_y = True
@@ -283,6 +294,16 @@ def main() -> None:
 
         # Draw the player sprite at its current world position.
         screen.blit(player.sprite, (player.world_x, player.world_y))
+
+        # add debug elements
+        if show_map_debug_features:
+           
+            # draw map collision rects
+            for crect in map_collision_rects:
+                pygame.draw.rect(screen, pygame.Color('darkorange'), crect, width=2)
+            
+            # draw player collision rect
+            pygame.draw.rect(screen, pygame.Color('darkorchid1'), player.get_collision_rect(), width=2)
 
         # Make the completed frame visible
         pygame.display.flip()
