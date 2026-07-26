@@ -1,28 +1,30 @@
 from pathlib import Path
-import pygame
 from typing import Literal
 
+import pygame
 
 type DirectionValue = Literal[-1, 0, 1]
 
-class Character:
 
-    def __init__(self,
-                 *,
-                 name: str,
-                 sprite_path: str | Path,
-                 spawn_offset_x: int,
-                 spawn_offset_y: int,
-                 collision_offset_x: int,
-                 collision_offset_y: int,
-                 collision_box_height: int,
-                 collision_box_width: int,
-                 default_speed: float,
-                 visible_top_offset: int = 0,
-                 visible_bottom_offset: int = 0,
-                 visible_left_offset: int = 0,
-                 visible_right_offset: int = 0):
-        
+class Character:
+    def __init__(
+        self,
+        *,
+        name: str,
+        sprite_path: str | Path,
+        spawn_offset_x: int,
+        spawn_offset_y: int,
+        collision_offset_x: int,
+        collision_offset_y: int,
+        collision_box_height: int,
+        collision_box_width: int,
+        default_speed: float,
+        visible_top_offset: int = 0,
+        visible_bottom_offset: int = 0,
+        visible_left_offset: int = 0,
+        visible_right_offset: int = 0,
+    ):
+
         self.name = name
 
         if isinstance(sprite_path, Path):
@@ -47,7 +49,7 @@ class Character:
         self._collision_box_height = collision_box_height
         self._collision_box_width = collision_box_width
 
-        # speed in pixels per second 
+        # speed in pixels per second
         self._default_speed = default_speed
         self.speed = default_speed
 
@@ -73,10 +75,10 @@ class Character:
         # convert_alpha() requires Pygame's display mode to already exist.
         # Note: Constructing a Character (ie this code) therefore depends on display initialization.
         player_sprite_sheet = player_sprite_sheet.convert_alpha()
-       
+
         # TODO: This hard-coded rectangle selects the Elf Mage's first frame.
         # Move character-specific sprite-sheet details into an animation or sprite configuration later.
-        sprite_rect = pygame.Rect(0, 0, 64, 64) 
+        sprite_rect = pygame.Rect(0, 0, 64, 64)
 
         self.sprite = player_sprite_sheet.subsurface(sprite_rect)
 
@@ -85,28 +87,29 @@ class Character:
         self.spawned = False
 
     # Place the character on the map and establish the world position used from this point forward.
-    def spawn(self,
-              x: float, 
-              y: float,
-              direction_x: DirectionValue = 0,
-              direction_y: DirectionValue = 0
-              )-> None:
-        
+    def spawn(
+        self,
+        x: float,
+        y: float,
+        direction_x: DirectionValue = 0,
+        direction_y: DirectionValue = 0,
+    ) -> None:
+
         self.world_x = x - self._spawn_offset_x
         self.world_y = y - self._spawn_offset_y
         self.direction_x = direction_x
         self.direction_y = direction_y
         self.spawned = True
 
+    def get_collision_rect(
+        self, x: float | None = None, y: float | None = None
+    ) -> pygame.Rect:
 
-    def get_collision_rect(self, 
-                           x: float | None = None, 
-                           y: float | None = None
-                           ) -> pygame.Rect:
-           
         if not self.spawned:
-            raise RuntimeError(f"Character {self.name} must be spawned to generate a collision rect.")
-           
+            raise RuntimeError(
+                f"Character {self.name} must be spawned to generate a collision rect."
+            )
+
         # Use the character's current position when no coordinates are supplied.
         # Explicit coordinates let us test a proposed position before actually moving it.
         if x is None and y is None:
@@ -116,40 +119,40 @@ class Character:
             use_x = x
             use_y = y
         else:
-            raise ValueError("In get_collision_rect both x and y must be none or both must be a value.")
+            raise ValueError(
+                "In get_collision_rect both x and y must be none or both must be a value."
+            )
 
-        # Translate the sprite's top-left world position to the collision box's position.    
-        return pygame.Rect(use_x + self._collision_offset_x,
-                           use_y + self._collision_offset_y,
-                           self._collision_box_width,
-                           self._collision_box_height)
-    
+        # Translate the sprite's top-left world position to the collision box's position.
+        return pygame.Rect(
+            use_x + self._collision_offset_x,
+            use_y + self._collision_offset_y,
+            self._collision_box_width,
+            self._collision_box_height,
+        )
+
     # Calculate where the current direction and speed would move the character
     # without changing its actual world position.
     def get_proposed_new_position(self, delta_secs: float) -> tuple[float, float]:
-        
+
         new_x = self.world_x + (self.direction_x * self.speed * delta_secs)
         new_y = self.world_y + (self.direction_y * self.speed * delta_secs)
 
         return (new_x, new_y)
-    
+
     # Check whether the character's visible walking-sprite bounds fit inside
     # the supplied rectangular area, ignoring transparent padding around the frame.
-    # currently used for testing against map edges. 
-    def is_within_bounds(self,
-                         proposed_x: float,
-                         proposed_y: float,
-                         x_size: int,
-                         y_size: int
-                         ) -> bool:
-        
-        in_bounds = (proposed_x + self.visible_left_offset >= 1 and 
-                     proposed_x + self.sprite.get_width() - self.visible_right_offset <= x_size and 
-                     proposed_y + self.visible_top_offset >= 1 and 
-                     proposed_y + self.sprite.get_height() - self.visible_bottom_offset <= y_size)
+    # currently used for testing against map edges.
+    def is_within_bounds(
+        self, proposed_x: float, proposed_y: float, x_size: int, y_size: int
+    ) -> bool:
+
+        in_bounds = (
+            proposed_x + self.visible_left_offset >= 1
+            and proposed_x + self.sprite.get_width() - self.visible_right_offset
+            <= x_size
+            and proposed_y + self.visible_top_offset >= 1
+            and proposed_y + self.sprite.get_height() - self.visible_bottom_offset
+            <= y_size
+        )
         return in_bounds
-
-    
-
-
-
