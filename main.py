@@ -47,6 +47,8 @@ ELF_MAGE_FILE_PATH = (
     / "ElfMage_64.png"
 )
 
+# Read the rectangular collision objects from Tiled's Collisions layer
+# and convert them into Pygame rectangles.
 def get_collision_rects(tiled_map: pytmx.TiledMap) -> list[pygame.Rect]:
 
     col_list: list[pygame.Rect] = []
@@ -60,6 +62,7 @@ def get_collision_rects(tiled_map: pytmx.TiledMap) -> list[pygame.Rect]:
     
     return col_list
 
+# Find the named player spawn point in Tiled and return its world coordinates.
 def get_player_start(tiled_map: pytmx.TiledMap) -> tuple[float, float]:
 
     for layer in tiled_map.layers:
@@ -71,6 +74,89 @@ def get_player_start(tiled_map: pytmx.TiledMap) -> tuple[float, float]:
 
     raise ValueError("Could not find initial player start location.")
 
+# A proposed position is valid only if the character stays within the map
+# and its collision rectangle does not overlap a map obstacle.
+def is_proposed_player_move_valid(proposed_x: float, 
+                                  proposed_y: float, 
+                                  char: Character, 
+                                  map_collision_list: list[pygame.Rect],
+                                  map_width: int,
+                                  map_height: int
+                                  ) -> bool:
+    
+    in_bounds = char.is_within_bounds(proposed_x, proposed_y, x_size=map_width, y_size=map_height)
+
+    player_collision_rect = char.get_collision_rect(proposed_x, proposed_y)
+    no_collision = player_collision_rect.collidelist(map_collision_list) == -1
+
+    return in_bounds and no_collision
+
+# Resolve the player's attempted movement after direction has been set.
+# For diagonal movement, try the full move first, then X-only, then Y-only.
+def update_player_position(move_attempt_x: bool,
+                           move_attempt_y: bool, 
+                           player: Character,
+                           delta_secs: float,
+                           map_width: int,
+                           map_height: int,
+                           col_rect_list: list[pygame.Rect]
+                           ) -> None:
+    
+    # Skip movement calculations when neither axis has input.
+    if not move_attempt_x and not move_attempt_y:
+        return
+    
+    # Calculate the position the current direction and frame time would produce.
+    proposed_x, proposed_y = player.get_proposed_new_position(delta_secs)
+
+    # Try diagonal movement first. If blocked, slide along an available axis.
+    if move_attempt_x and move_attempt_y:
+        
+        if is_proposed_player_move_valid(proposed_x,
+                                         proposed_y,
+                                         player,
+                                         col_rect_list,
+                                         map_width,
+                                         map_height):
+            player.world_x = proposed_x
+            player.world_y = proposed_y
+
+        elif is_proposed_player_move_valid(proposed_x,
+                                           player.world_y,
+                                           player,
+                                           col_rect_list,
+                                           map_width,
+                                           map_height):
+            player.world_x = proposed_x
+
+        elif is_proposed_player_move_valid(player.world_x,
+                                           proposed_y,
+                                           player,
+                                           col_rect_list,
+                                           map_width,
+                                           map_height):
+            player.world_y = proposed_y
+        
+    elif move_attempt_x:
+
+        if is_proposed_player_move_valid(proposed_x,
+                                         proposed_y,
+                                         player,
+                                         col_rect_list,
+                                         map_width,
+                                         map_height):
+            player.world_x = proposed_x
+
+    elif move_attempt_y:
+
+        if is_proposed_player_move_valid(proposed_x,
+                                         proposed_y,
+                                         player,
+                                         col_rect_list,
+                                         map_width,
+                                         map_height):
+            player.world_y = proposed_y
+
 def main() -> None:
     # Set up Pygame and create the game window.
     pygame.init()
@@ -81,9 +167,12 @@ def main() -> None:
     # Load the Tiled map and its referenced tile images.
     tiled_map = load_pygame(MAP_PATH)
 
-    MAP_HEIGHT = tiled_map.height * tiled_map.tileheight
-    MAP_WIDTH = tiled_map.width * tiled_map.tilewidth
+    # Convert the map dimensions from tiles into world pixels.
+    map_height = tiled_map.height * tiled_map.tileheight
+    map_width = tiled_map.width * tiled_map.tilewidth
 
+    # Create the player-controlled Character using the Elf Mage's
+    # sprite-specific alignment, collision, and visible-bound settings.
     player = Character(name="Elf Mage",
                     sprite_path=ELF_MAGE_FILE_PATH,
                     spawn_offset_x=ELF_MAGE_SPAWN_OFFSET_X,
@@ -102,16 +191,13 @@ def main() -> None:
     # get player start location
     spawn_x, spawn_y = get_player_start(tiled_map)
 
-    # can't use the Player on the map / in the world until we spawn()
+    # can't use the Character on the map / in the world until we spawn()
     player.spawn(spawn_x, spawn_y)
 
     # get all the collision rects for our map
     col_rect_list: list[pygame.Rect] = get_collision_rects(tiled_map)
 
-    # where player would be with movement based on keypress. used to check for collisions or 
-    # other events before updating (and allowing player to move)
-    proposed_x: float = 0
-    proposed_y: float = 0
+    # Track whether this frame contains horizontal or vertical movement input.
     move_attempt_x: bool = False
     move_attempt_y: bool = False
 
@@ -153,38 +239,15 @@ def main() -> None:
         elif pressed_keys[pygame.K_DOWN]:
             player.direction_y = 1
             move_attempt_y = True
-        
-        # if they're trying to move, calculate where that would move them to and if that would be a collision
-        # before allowing the change
-        if move_attempt_x or move_attempt_y:
-            proposed_x, proposed_y = player.get_proposed_new_position(delta_secs)
 
-            # see if the new player location would be off map or a collision, if so, keep old player location
-            proposed_pos_col_rect = player.get_collision_rect(proposed_x, proposed_y)
-
-            if player.is_within_bounds(proposed_x, proposed_y, MAP_WIDTH, MAP_HEIGHT):
-            
-                # if no collision, intended new place becomes current place
-                if proposed_pos_col_rect.collidelist(col_rect_list) == -1:
-                    player.world_x = proposed_x
-                    player.world_y = proposed_y
-                elif move_attempt_x and move_attempt_y:
-                    # player is trying to move diagonally, see if one of those directions is ok
-                    # and if so, move in the allowable direction.
-                    # both might fail or max one of them might be ok
-                    
-                    # test x movement
-                    proposed_pos_col_rect = player.get_collision_rect(proposed_x, player.world_y)
-
-                    # if we can move in the x direction, set the new x position
-                    if proposed_pos_col_rect.collidelist(col_rect_list) == -1:
-                        player.world_x = proposed_x
-                    else:
-                        # if we can't move in the X direction, test Y and update accordingly
-                        proposed_pos_col_rect = player.get_collision_rect(player.world_x, proposed_y)
-
-                        if proposed_pos_col_rect.collidelist(col_rect_list) == -1:
-                            player.world_y = proposed_y
+        # Validate and apply the attempted movement against map bounds and obstacles.
+        update_player_position(move_attempt_x,
+                               move_attempt_y,
+                               player,
+                               delta_secs,
+                               map_width,
+                               map_height,
+                               col_rect_list)
 
         # Draw each visible tile layer from bottom to top.
         for layer in tiled_map.visible_layers:
@@ -195,6 +258,7 @@ def main() -> None:
 
                     screen.blit(tile_image, (screen_x, screen_y))
         
+        # Draw the player sprite at its current world position.
         screen.blit(player.sprite,(player.world_x, player.world_y))
 
         # Make the completed frame visible
