@@ -93,7 +93,7 @@ def is_proposed_player_move_valid(proposed_x: float,
 
 # Resolve the player's attempted movement after direction has been set.
 # For diagonal movement, try the full move first, then X-only, then Y-only.
-def update_player_position(move_attempt_x: bool,
+def update_player_position(*,move_attempt_x: bool,
                            move_attempt_y: bool, 
                            player: Character,
                            delta_secs: float,
@@ -112,49 +112,49 @@ def update_player_position(move_attempt_x: bool,
     # Try diagonal movement first. If blocked, slide along an available axis.
     if move_attempt_x and move_attempt_y:
         
-        if is_proposed_player_move_valid(proposed_x,
-                                         proposed_y,
-                                         player,
-                                         map_collision_rects,
-                                         map_width,
-                                         map_height):
+        if is_proposed_player_move_valid(proposed_x=proposed_x,
+                                         proposed_y=proposed_y,
+                                         char=player,
+                                         map_collision_rects=map_collision_rects,
+                                         map_width=map_width,
+                                         map_height=map_height):
             player.world_x = proposed_x
             player.world_y = proposed_y
 
-        elif is_proposed_player_move_valid(proposed_x,
-                                           player.world_y,
-                                           player,
-                                           map_collision_rects,
-                                           map_width,
-                                           map_height):
+        elif is_proposed_player_move_valid(proposed_x=proposed_x,
+                                           proposed_y=player.world_y,
+                                           char=player,
+                                           map_collision_rects=map_collision_rects,
+                                           map_width=map_width,
+                                           map_height=map_height):
             player.world_x = proposed_x
 
-        elif is_proposed_player_move_valid(player.world_x,
-                                           proposed_y,
-                                           player,
-                                           map_collision_rects,
-                                           map_width,
-                                           map_height):
+        elif is_proposed_player_move_valid(proposed_x=player.world_x,
+                                           proposed_y=proposed_y,
+                                           char=player,
+                                           map_collision_rects=map_collision_rects,
+                                           map_width=map_width,
+                                           map_height=map_height):
             player.world_y = proposed_y
         
     elif move_attempt_x:
 
-        if is_proposed_player_move_valid(proposed_x,
-                                         proposed_y,
-                                         player,
-                                         map_collision_rects,
-                                         map_width,
-                                         map_height):
+        if is_proposed_player_move_valid(proposed_x=proposed_x,
+                                         proposed_y=proposed_y,
+                                         char=player,
+                                         map_collision_rects=map_collision_rects,
+                                         map_width=map_width,
+                                         map_height=map_height):
             player.world_x = proposed_x
 
     elif move_attempt_y:
 
-        if is_proposed_player_move_valid(proposed_x,
-                                         proposed_y,
-                                         player,
-                                         map_collision_rects,
-                                         map_width,
-                                         map_height):
+        if is_proposed_player_move_valid(proposed_x=proposed_x,
+                                         proposed_y=proposed_y,
+                                         char=player,
+                                         map_collision_rects=map_collision_rects,
+                                         map_width=map_width,
+                                         map_height=map_height):
             player.world_y = proposed_y
 
 def main() -> None:
@@ -241,13 +241,13 @@ def main() -> None:
             move_attempt_y = True
 
         # Validate and apply the attempted movement against map bounds and obstacles.
-        update_player_position(move_attempt_x,
-                               move_attempt_y,
-                               player,
-                               delta_secs,
-                               map_width,
-                               map_height,
-                               map_collision_rects)
+        update_player_position(move_attempt_x=move_attempt_x,
+                               move_attempt_y=move_attempt_y,
+                               player=player,
+                               delta_secs=delta_secs,
+                               map_width=map_width,
+                               map_height=map_height,
+                               map_collision_rects=map_collision_rects)
 
         # Draw each visible tile layer from bottom to top.
         for layer in tiled_map.visible_layers:
