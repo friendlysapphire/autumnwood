@@ -115,6 +115,22 @@ class Character:
                            self._collision_box_width,
                            self._collision_box_height)
     
+    def get_proposed_new_position(self, delta_secs: float) -> tuple[float, float]:
+        
+        new_x = self.world_x + (self.direction_x * self.speed * delta_secs)
+        new_y = self.world_y + (self.direction_y * self.speed * delta_secs)
+
+        return (new_x, new_y)
+    
+    def is_within_bounds(self, proposed_x: float, proposed_y: float, x_size: int, y_size: int) -> bool:
+        
+        in_bounds = (proposed_x + self.visible_left_offset >= 1 and 
+                     proposed_x + self.sprite.get_width() - self.visible_right_offset <= x_size and 
+                     proposed_y + self.visible_top_offset >= 1 and 
+                     proposed_y + self.sprite.get_height() - self.visible_bottom_offset <= y_size)
+        return in_bounds
+
+    
 
 
 

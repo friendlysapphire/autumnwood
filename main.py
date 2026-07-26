@@ -8,6 +8,7 @@ from pytmx.util_pygame import load_pygame
 
 WINDOW_WIDTH = 960
 WINDOW_HEIGHT = 640
+
 FRAMES_PER_SECOND = 60
 
 PROJECT_ROOT = Path(__file__).parent
@@ -80,6 +81,9 @@ def main() -> None:
     # Load the Tiled map and its referenced tile images.
     tiled_map = load_pygame(MAP_PATH)
 
+    MAP_HEIGHT = tiled_map.height * tiled_map.tileheight
+    MAP_WIDTH = tiled_map.width * tiled_map.tilewidth
+
     player = Character(name="Elf Mage",
                     sprite_path=ELF_MAGE_FILE_PATH,
                     spawn_offset_x=ELF_MAGE_SPAWN_OFFSET_X,
@@ -106,8 +110,8 @@ def main() -> None:
 
     # where player would be with movement based on keypress. used to check for collisions or 
     # other events before updating (and allowing player to move)
-    player_x_new: float = 0
-    player_y_new: float = 0
+    proposed_x: float = 0
+    proposed_y: float = 0
     move_attempt_x: bool = False
     move_attempt_y: bool = False
 
@@ -116,7 +120,7 @@ def main() -> None:
     while running:
 
         # clear movement from last frame. +1, 0, or -1. 
-        player.direction_x  = 0
+        player.direction_x = 0
         player.direction_y = 0
         
         # clear flag showing attempted movement in this frame
@@ -153,39 +157,34 @@ def main() -> None:
         # if they're trying to move, calculate where that would move them to and if that would be a collision
         # before allowing the change
         if move_attempt_x or move_attempt_y:
-            player_x_new = player.world_x + (player.direction_x * player.speed * delta_secs)
-            player_y_new = player.world_y + (player.direction_y * player.speed * delta_secs)
+            proposed_x, proposed_y = player.get_proposed_new_position(delta_secs)
 
-            # see if the new player location would be a collision, if so, keep old player location
-            proposed_pos_col_rect = player.get_collision_rect(player_x_new, player_y_new)
+            # see if the new player location would be off map or a collision, if so, keep old player location
+            proposed_pos_col_rect = player.get_collision_rect(proposed_x, proposed_y)
 
-            if (player_x_new + player.visible_left_offset >= 1 and 
-                player_x_new + player.sprite.get_width() - player.visible_right_offset <= WINDOW_WIDTH and 
-                player_y_new + player.visible_top_offset >= 1 and 
-                player_y_new + player.sprite.get_height() - player.visible_bottom_offset <= WINDOW_HEIGHT
-                ):
+            if player.is_within_bounds(proposed_x, proposed_y, MAP_WIDTH, MAP_HEIGHT):
             
                 # if no collision, intended new place becomes current place
                 if proposed_pos_col_rect.collidelist(col_rect_list) == -1:
-                    player.world_x = player_x_new
-                    player.world_y = player_y_new
+                    player.world_x = proposed_x
+                    player.world_y = proposed_y
                 elif move_attempt_x and move_attempt_y:
                     # player is trying to move diagonally, see if one of those directions is ok
                     # and if so, move in the allowable direction.
                     # both might fail or max one of them might be ok
                     
                     # test x movement
-                    proposed_pos_col_rect = player.get_collision_rect(player_x_new, player.world_y)
+                    proposed_pos_col_rect = player.get_collision_rect(proposed_x, player.world_y)
 
                     # if we can move in the x direction, set the new x position
                     if proposed_pos_col_rect.collidelist(col_rect_list) == -1:
-                        player.world_x = player_x_new
+                        player.world_x = proposed_x
                     else:
                         # if we can't move in the X direction, test Y and update accordingly
-                        proposed_pos_col_rect = player.get_collision_rect(player.world_x, player_y_new)
+                        proposed_pos_col_rect = player.get_collision_rect(player.world_x, proposed_y)
 
                         if proposed_pos_col_rect.collidelist(col_rect_list) == -1:
-                            player.world_y = player_y_new
+                            player.world_y = proposed_y
 
         # Draw each visible tile layer from bottom to top.
         for layer in tiled_map.visible_layers:
