@@ -12,7 +12,7 @@ WINDOW_HEIGHT = 640
 FRAMES_PER_SECOND = 60
 
 PROJECT_ROOT = Path(__file__).parent
-MAP_PATH = PROJECT_ROOT / "resources" / "testmap.tmx"
+MAP_PATH = PROJECT_ROOT / "resources" / "testmap2.tmx"
 
 
 # Elf Mage player construction details
@@ -226,6 +226,11 @@ def main() -> None:
     # can't use the Character on the map / in the world until we spawn()
     player.spawn(spawn_x, spawn_y)
 
+    # Store the world coordinate currently shown at the screen's top-left corner.
+    # These values are recalculated each frame after the player moves.
+    camera_x: float = 0
+    camera_y: float = 0
+
     # get all the collision rects for our map
     map_collision_rects: list[pygame.Rect] = get_collision_rects(tiled_map)
 
@@ -294,6 +299,23 @@ def main() -> None:
             map_collision_rects=map_collision_rects,
         )
 
+        # Calculate the camera position that would place the player's sprite origin
+        # at the center of the screen.
+        unclamped_camera_x = player.world_x - (WINDOW_WIDTH / 2)
+        unclamped_camera_y = player.world_y - (WINDOW_HEIGHT / 2)
+
+        # Find the farthest valid camera position on each axis.
+        # Keeping these values nonnegative also handles maps smaller than the window.
+        max_camera_x = max(0, map_width - WINDOW_WIDTH)
+        max_camera_y = max(0, map_height - WINDOW_HEIGHT)
+
+        # Clamp each camera coordinate between zero and its maximum valid position.
+        camera_x_intermed = max(0, unclamped_camera_x)
+        camera_x = min(camera_x_intermed, max_camera_x)
+
+        camera_y_intermed = max(0, unclamped_camera_y)
+        camera_y = min(camera_y_intermed, max_camera_y)
+
         # Choose the animation state from this frame's movement input.
         if move_attempt_x or move_attempt_y:
             player.set_animation_state(AnimationState.WALKING)
@@ -304,26 +326,34 @@ def main() -> None:
         for layer in tiled_map.visible_layers:
             if isinstance(layer, pytmx.TiledTileLayer):
                 for tile_x, tile_y, tile_image in layer.tiles():
-                    screen_x = tile_x * tiled_map.tilewidth
-                    screen_y = tile_y * tiled_map.tileheight
+                    tile_world_x = tile_x * tiled_map.tilewidth
+                    tile_world_y = tile_y * tiled_map.tileheight
 
-                    screen.blit(tile_image, (screen_x, screen_y))
+                    # Convert the tile's world position to its position inside the camera view.
+                    screen.blit(tile_image, (tile_world_x - camera_x, tile_world_y - camera_y))
 
         # Advance the current animation based on elapsed frame time.
         player.update_sprite_animation(delta_secs)
 
-        # Draw the player sprite at its current world position.
-        screen.blit(player.sprite, (player.world_x, player.world_y))
+        # Convert the player's world position to screen coordinates and draw the sprite.
+        screen.blit(player.sprite, (player.world_x - camera_x, player.world_y - camera_y))
 
         # Draw optional collision-debug overlays on top of the completed scene.
         if show_map_debug_features:
            
-            # draw map collision rects
+            # Shift each map collision rectangle for drawing without changing its world position.
             for crect in map_collision_rects:
-                pygame.draw.rect(screen, pygame.Color('darkorange'), crect, width=2)
+                camera_adjusted_rect = pygame.Rect(crect.x - camera_x, crect.y - camera_y, crect.width, crect.height)
+                pygame.draw.rect(screen, pygame.Color('darkorange'), camera_adjusted_rect, width=2)
             
-            # draw player collision rect
-            pygame.draw.rect(screen, pygame.Color('darkorchid1'), player.get_collision_rect(), width=2)
+            # Shift the player's world collision rectangle into screen coordinates for drawing.
+            base_player_crect = player.get_collision_rect()
+            camera_adjusted_rect = pygame.Rect(base_player_crect.x - camera_x,
+                                               base_player_crect.y - camera_y,
+                                               base_player_crect.width,
+                                               base_player_crect.height)
+            
+            pygame.draw.rect(screen, pygame.Color('darkorchid1'), camera_adjusted_rect, width=2)
 
         # Make the completed frame visible
         pygame.display.flip()

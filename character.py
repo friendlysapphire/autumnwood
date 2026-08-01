@@ -16,6 +16,7 @@ class AnimationState(StrEnum):
     ATTACK_PREP = "attack_prep"
     ATTACK = "attack"
     DYING = "dying"
+    DEAD = "dead"
 
 
 class Character:
