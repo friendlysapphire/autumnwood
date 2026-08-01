@@ -4,7 +4,7 @@ import pygame
 import pytmx
 from pytmx.util_pygame import load_pygame
 
-from character import Character
+from character import Character, AnimationState
 
 WINDOW_WIDTH = 960
 WINDOW_HEIGHT = 640
@@ -37,6 +37,16 @@ ELF_MAGE_VISIBLE_TOP_OFFSET = 12
 ELF_MAGE_VISIBLE_BOTTOM_OFFSET = 15
 ELF_MAGE_VISIBLE_LEFT_OFFSET = 19
 ELF_MAGE_VISIBLE_RIGHT_OFFSET = 16
+
+# Define the ordered sprite-sheet frames available for each Elf Mage animation state.
+ELF_MAGE_SPRITE_ANIMS = {
+    AnimationState.IDLE : [pygame.Rect(0, 0, 64, 64),
+                           pygame.Rect(64, 0, 64, 64)],
+    AnimationState.WALKING : [pygame.Rect(0, 64, 64, 64),
+                              pygame.Rect(64, 64, 64, 64),
+                              pygame.Rect(128, 64, 64, 64)]
+                           
+}
 
 ELF_MAGE_FILE_PATH = (
     PROJECT_ROOT
@@ -192,10 +202,11 @@ def main() -> None:
     map_width = tiled_map.width * tiled_map.tilewidth
 
     # Create the player-controlled Character using the Elf Mage's
-    # sprite-specific alignment, collision, and visible-bound settings.
+    # animation, alignment, collision, and visible-bound settings.
     player = Character(
         name="Elf Mage",
         sprite_path=ELF_MAGE_FILE_PATH,
+        sprite_animation_rects=ELF_MAGE_SPRITE_ANIMS,
         spawn_offset_x=ELF_MAGE_SPAWN_OFFSET_X,
         spawn_offset_y=ELF_MAGE_SPAWN_OFFSET_Y,
         collision_offset_x=ELF_MAGE_COLLISION_RECT_X,
@@ -283,6 +294,12 @@ def main() -> None:
             map_collision_rects=map_collision_rects,
         )
 
+        # Choose the animation state from this frame's movement input.
+        if move_attempt_x or move_attempt_y:
+            player.set_animation_state(AnimationState.WALKING)
+        else:
+            player.set_animation_state(AnimationState.IDLE)
+
         # Draw each visible tile layer from bottom to top.
         for layer in tiled_map.visible_layers:
             if isinstance(layer, pytmx.TiledTileLayer):
@@ -292,10 +309,13 @@ def main() -> None:
 
                     screen.blit(tile_image, (screen_x, screen_y))
 
+        # Advance the current animation based on elapsed frame time.
+        player.update_sprite_animation(delta_secs)
+
         # Draw the player sprite at its current world position.
         screen.blit(player.sprite, (player.world_x, player.world_y))
 
-        # add debug elements
+        # Draw optional collision-debug overlays on top of the completed scene.
         if show_map_debug_features:
            
             # draw map collision rects
