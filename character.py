@@ -7,9 +7,7 @@ import pygame
 type DirectionValue = Literal[-1, 0, 1]
 
 
-# Map each animation state to the ordered sprite-sheet rectangles used for that animation.
-# Each rectangle identifies one frame, and every character must provide at least one IDLE frame,
-# which also functions as the default.
+# Define the animation states shared by characters and sprite configurations.
 class AnimationState(StrEnum):
     IDLE = "idle"
     WALKING = "walking"
@@ -85,11 +83,11 @@ class Character:
         self.direction_y: DirectionValue = 0
 
         # set up our initial sprite 
-        player_sprite_sheet = pygame.image.load(self._sprite_path)
+        sprite_sheet = pygame.image.load(self._sprite_path)
 
         # convert_alpha() requires Pygame's display mode to already exist.
         # Note: Constructing a Character (ie this code) therefore depends on display initialization.
-        self.player_sprite_sheet = player_sprite_sheet.convert_alpha()
+        self._sprite_sheet = sprite_sheet.convert_alpha()
 
         # Store the frame rectangles available for each animation state.
         self._sprite_animation_rects = sprite_animation_rects
@@ -100,7 +98,7 @@ class Character:
         if not sprite_idle_rects:
             raise ValueError("sprite_animation_rects must include at least one IDLE frame.")
 
-        self.sprite = self.player_sprite_sheet.subsurface(sprite_idle_rects[0])
+        self.sprite = self._sprite_sheet.subsurface(sprite_idle_rects[0])
 
         # Track the active animation, its current frame, and elapsed time between frame changes.
         self._current_animation_state = AnimationState.IDLE
@@ -206,7 +204,7 @@ class Character:
         self._current_frame_index = 0
 
         anim_rects = self._sprite_animation_rects[self._current_animation_state]
-        self.sprite = self.player_sprite_sheet.subsurface(anim_rects[self._current_frame_index])
+        self.sprite = self._sprite_sheet.subsurface(anim_rects[self._current_frame_index])
         
     # Accumulate elapsed time and advance the active animation when one frame interval has passed.
     def update_sprite_animation(self, delta_secs: float) -> None:
@@ -217,16 +215,13 @@ class Character:
         if self._animation_elapsed_time >= self._seconds_per_sprite_anim_frame:
 
             # Advance to the next frame, wrapping back to frame zero at the end.
-            if self._current_frame_index + 1 == self._current_animation_state_num_frames:
-                self._current_frame_index = 0
-            else:
-                self._current_frame_index += 1
+            self._current_frame_index = (self._current_frame_index + 1) % self._current_animation_state_num_frames
 
             self._animation_elapsed_time = 0.0
 
             # Replace the visible sprite with the newly selected animation frame.
             anim_rects = self._sprite_animation_rects[self._current_animation_state]
-            self.sprite = self.player_sprite_sheet.subsurface(anim_rects[self._current_frame_index])
+            self.sprite = self._sprite_sheet.subsurface(anim_rects[self._current_frame_index])
 
 
 
