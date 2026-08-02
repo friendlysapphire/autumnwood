@@ -17,7 +17,7 @@ MAP_PATH = PROJECT_ROOT / "resources" / "testmap2.tmx"
 
 # Elf Mage player construction details
 # player speed is in pixels per second
-ELF_MAGE_PLAYER_SPEED = 120
+ELF_MAGE_PLAYER_SPEED = 120.0
 
 # Pygame draws from the image's top-left, we want to be centered aroound the feet. w/o this adjustment
 # char would appear in world down and to right of where the spawn point visually appears on the map.
@@ -255,11 +255,6 @@ def main() -> None:
     # can't use the Character on the map / in the world until we spawn()
     player.spawn(spawn_x, spawn_y)
 
-    # Store the world coordinate currently shown at the screen's top-left corner.
-    # These values are recalculated each frame after the player moves.
-    camera_x: float = 0
-    camera_y: float = 0
-
     # get all the collision rects for our map
     map_collision_rects: list[pygame.Rect] = get_collision_rects(tiled_map)
 
@@ -335,6 +330,9 @@ def main() -> None:
                                                          window_width=WINDOW_WIDTH,
                                                          window_height=WINDOW_HEIGHT)
 
+        camera_screen_offset_x = round(-camera_x)
+        camera_screen_offset_y = round(-camera_y)
+
         # Choose the animation state from this frame's movement input.
         if move_attempt_x or move_attempt_y:
             player.set_animation_state(AnimationState.WALKING)
@@ -347,27 +345,31 @@ def main() -> None:
                 for tile_x, tile_y, tile_image in layer.tiles():
                     tile_world_x = tile_x * tiled_map.tilewidth
                     tile_world_y = tile_y * tiled_map.tileheight
+                    tile_screen_x = round(tile_world_x - camera_x)
+                    tile_screen_y = round(tile_world_y - camera_y)
 
                     # Convert the tile's world position to its position inside the camera view.
-                    screen.blit(tile_image, (tile_world_x - camera_x, tile_world_y - camera_y))
+                    screen.blit(tile_image, (tile_screen_x, tile_screen_y))
 
         # Advance the current animation based on elapsed frame time.
         player.update_sprite_animation(delta_secs)
 
         # Convert the player's world position to screen coordinates and draw the sprite.
-        screen.blit(player.sprite, (player.world_x - camera_x, player.world_y - camera_y))
+        player_screen_x = round(player.world_x - camera_x)
+        player_screen_y = round(player.world_y - camera_y)
+        screen.blit(player.sprite, (player_screen_x, player_screen_y))
 
         # Draw optional collision-debug overlays on top of the completed scene.
         if show_map_debug_features:
            
             # Shift each map collision rectangle for drawing without changing its world position.
             for crect in map_collision_rects:
-                camera_adjusted_rect = crect.move(-camera_x, -camera_y)
+                camera_adjusted_rect = crect.move(camera_screen_offset_x, camera_screen_offset_y)
                 pygame.draw.rect(screen, pygame.Color('darkorange'), camera_adjusted_rect, width=2)
             
             # Shift the player's world collision rectangle into screen coordinates for drawing.
             base_player_crect = player.get_collision_rect()
-            camera_adjusted_rect = base_player_crect.move(-camera_x, -camera_y)
+            camera_adjusted_rect = base_player_crect.move(camera_screen_offset_x, camera_screen_offset_y)
             pygame.draw.rect(screen, pygame.Color('darkorchid1'), camera_adjusted_rect, width=2)
 
         # Make the completed frame visible

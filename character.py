@@ -151,13 +151,12 @@ class Character:
                 "In get_collision_rect both x and y must be none or both must be a value."
             )
 
-        # Translate the sprite's top-left world position to the collision box's position.
         return pygame.Rect(
             use_x + self._collision_offset_x,
             use_y + self._collision_offset_y,
             self._collision_box_width,
-            self._collision_box_height,
-        )
+            self._collision_box_height
+            )
 
     # Calculate where the current direction and speed would move the character
     # without changing its actual world position.
@@ -222,7 +221,6 @@ class Character:
             # Replace the visible sprite with the newly selected animation frame.
             anim_rects = self._sprite_animation_rects[self._current_animation_state]
             self.sprite = self._sprite_sheet.subsurface(anim_rects[self._current_frame_index])
-
 
 
 
