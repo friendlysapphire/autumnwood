@@ -1,10 +1,12 @@
+from character import Character, AnimationState
 from pathlib import Path
+from pytmx.util_pygame import load_pygame
+from region import Region, RegionType
 
 import pygame
 import pytmx
-from pytmx.util_pygame import load_pygame
 
-from character import Character, AnimationState
+
 
 WINDOW_WIDTH = 960
 WINDOW_HEIGHT = 640
@@ -87,11 +89,11 @@ def get_clamped_camera_position(*,
 
     return camera_x, camera_y
 
-# Read the rectangular collision objects from Tiled's Collisions layer
-# and convert them into Pygame rectangles.
-def get_collision_rects(tiled_map: pytmx.TiledMap) -> list[pygame.Rect]:
+# Read gameplay regions from Tiled's Collisions layer.
+# For now, every region loaded from this layer is treated as SOLID.
+def get_map_regions(tiled_map: pytmx.TiledMap) -> list[Region]:
 
-    col_list: list[pygame.Rect] = []
+    region_list: list[Region] = []
 
     for layer in tiled_map.layers:
         if isinstance(layer, pytmx.TiledObjectGroup):
@@ -100,9 +102,10 @@ def get_collision_rects(tiled_map: pytmx.TiledMap) -> list[pygame.Rect]:
                     crect: pygame.Rect = pygame.Rect(
                         obj.x, obj.y, obj.width, obj.height
                     )
-                    col_list.append(crect)
 
-    return col_list
+                    region_list.append(Region(rect=crect, type=RegionType.SOLID))
+
+    return region_list
 
 
 # Find the named player spawn point in Tiled and return its world coordinates.
@@ -119,13 +122,13 @@ def get_player_start(tiled_map: pytmx.TiledMap) -> tuple[float, float]:
 
 
 # A proposed position is valid only if the character stays within the map
-# and its collision rectangle does not overlap a map obstacle.
+# and does not overlap a region that blocks movement.
 def is_proposed_player_move_valid(
     *,
     proposed_x: float,
     proposed_y: float,
     char: Character,
-    map_collision_rects: list[pygame.Rect],
+    map_regions: list[Region],
     map_width: int,
     map_height: int,
 ) -> bool:
@@ -135,7 +138,14 @@ def is_proposed_player_move_valid(
     )
 
     player_collision_rect = char.get_collision_rect(proposed_x, proposed_y)
-    no_collision = player_collision_rect.collidelist(map_collision_rects) == -1
+    no_collision = True
+
+    # Check the proposed player collision box against regions that currently block movement.
+    for region in map_regions:
+        if region.type == RegionType.SOLID:
+            if player_collision_rect.colliderect(region.rect):
+                no_collision = False
+                break
 
     return in_bounds and no_collision
 
@@ -150,7 +160,7 @@ def update_player_position(
     delta_secs: float,
     map_width: int,
     map_height: int,
-    map_collision_rects: list[pygame.Rect],
+    map_regions: list[Region],
 ) -> None:
 
     # Skip movement calculations when neither axis has input.
@@ -166,7 +176,7 @@ def update_player_position(
             proposed_x=proposed_x,
             proposed_y=proposed_y,
             char=player,
-            map_collision_rects=map_collision_rects,
+            map_regions=map_regions,
             map_width=map_width,
             map_height=map_height,
         ):
@@ -177,7 +187,7 @@ def update_player_position(
             proposed_x=proposed_x,
             proposed_y=player.world_y,
             char=player,
-            map_collision_rects=map_collision_rects,
+            map_regions=map_regions,
             map_width=map_width,
             map_height=map_height,
         ):
@@ -187,7 +197,7 @@ def update_player_position(
             proposed_x=player.world_x,
             proposed_y=proposed_y,
             char=player,
-            map_collision_rects=map_collision_rects,
+            map_regions=map_regions,
             map_width=map_width,
             map_height=map_height,
         ):
@@ -198,7 +208,7 @@ def update_player_position(
             proposed_x=proposed_x,
             proposed_y=proposed_y,
             char=player,
-            map_collision_rects=map_collision_rects,
+            map_regions=map_regions,
             map_width=map_width,
             map_height=map_height,
         ):
@@ -209,7 +219,7 @@ def update_player_position(
             proposed_x=proposed_x,
             proposed_y=proposed_y,
             char=player,
-            map_collision_rects=map_collision_rects,
+            map_regions=map_regions,
             map_width=map_width,
             map_height=map_height,
         ):
@@ -255,8 +265,9 @@ def main() -> None:
     # can't use the Character on the map / in the world until we spawn()
     player.spawn(spawn_x, spawn_y)
 
-    # get all the collision rects for our map
-    map_collision_rects: list[pygame.Rect] = get_collision_rects(tiled_map)
+
+    # Load the gameplay regions defined in the map.
+    map_regions: list[Region] = get_map_regions(tiled_map)
 
     # Track whether this frame contains horizontal or vertical movement input.
     move_attempt_x: bool = False
@@ -320,7 +331,7 @@ def main() -> None:
             delta_secs=delta_secs,
             map_width=map_width,
             map_height=map_height,
-            map_collision_rects=map_collision_rects,
+            map_regions=map_regions,
         )
 
         camera_x, camera_y = get_clamped_camera_position(character_world_x=player.world_x,
@@ -362,9 +373,10 @@ def main() -> None:
         # Draw optional collision-debug overlays on top of the completed scene.
         if show_map_debug_features:
            
-            # Shift each map collision rectangle for drawing without changing its world position.
-            for crect in map_collision_rects:
-                camera_adjusted_rect = crect.move(camera_screen_offset_x, camera_screen_offset_y)
+            # Shift each region rectangle into screen coordinates for debug drawing.
+            for region in map_regions:
+                collision_region_rect = region.rect
+                camera_adjusted_rect = collision_region_rect.move(camera_screen_offset_x, camera_screen_offset_y)
                 pygame.draw.rect(screen, pygame.Color('darkorange'), camera_adjusted_rect, width=2)
             
             # Shift the player's world collision rectangle into screen coordinates for drawing.
