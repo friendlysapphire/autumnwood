@@ -89,8 +89,8 @@ def get_clamped_camera_position(*,
 
     return camera_x, camera_y
 
-# Read gameplay regions from Tiled's Collisions layer.
-# For now, every region loaded from this layer is treated as SOLID.
+# Load gameplay regions from Tiled.
+# Collision-layer objects are always SOLID; Regions-layer objects define their type explicitly.
 def get_map_regions(tiled_map: pytmx.TiledMap) -> list[Region]:
 
     region_list: list[Region] = []
@@ -99,12 +99,28 @@ def get_map_regions(tiled_map: pytmx.TiledMap) -> list[Region]:
         if isinstance(layer, pytmx.TiledObjectGroup):
             if layer.name == "Collisions":
                 for obj in layer:
-                    crect: pygame.Rect = pygame.Rect(
-                        obj.x, obj.y, obj.width, obj.height
-                    )
-
+                    crect: pygame.Rect = pygame.Rect(obj.x, 
+                                                     obj.y, 
+                                                     obj.width, 
+                                                     obj.height)
+                    
                     region_list.append(Region(rect=crect, type=RegionType.SOLID))
 
+            if layer.name == "Regions":
+                for obj in layer:
+                    region_rect = pygame.Rect(obj.x,
+                                              obj.y,
+                                              obj.width,
+                                              obj.height)
+
+                    r_type = obj.properties.get("region_type")
+
+                    if r_type:
+                            region_list.append(Region(rect=region_rect, type=RegionType(r_type)))
+                    else:
+                        raise ValueError(f"All objects in Regions layer need region_type: {obj.x}: {obj.y} : {obj.properties}")
+
+                        
     return region_list
 
 
@@ -121,8 +137,7 @@ def get_player_start(tiled_map: pytmx.TiledMap) -> tuple[float, float]:
     raise ValueError("Could not find initial player start location.")
 
 
-# A proposed position is valid only if the character stays within the map
-# and does not overlap a region that blocks movement.
+# Check the proposed player collision box against regions that are not walkable by default.
 def is_proposed_player_move_valid(
     *,
     proposed_x: float,
@@ -142,7 +157,7 @@ def is_proposed_player_move_valid(
 
     # Check the proposed player collision box against regions that currently block movement.
     for region in map_regions:
-        if region.type == RegionType.SOLID:
+        if not region.is_walkable_by_default():
             if player_collision_rect.colliderect(region.rect):
                 no_collision = False
                 break
@@ -370,16 +385,28 @@ def main() -> None:
         player_screen_y = round(player.world_y - camera_y)
         screen.blit(player.sprite, (player_screen_x, player_screen_y))
 
-        # Draw optional collision-debug overlays on top of the completed scene.
+        # Draw optional region and collision debug overlays on top of the completed scene.
         if show_map_debug_features:
            
             # Shift each region rectangle into screen coordinates for debug drawing.
             for region in map_regions:
-                collision_region_rect = region.rect
-                camera_adjusted_rect = collision_region_rect.move(camera_screen_offset_x, camera_screen_offset_y)
-                pygame.draw.rect(screen, pygame.Color('darkorange'), camera_adjusted_rect, width=2)
+                region_rect = region.rect
+
+                # Use distinct colors so different region types are easy to identify while debugging.
+                match region.type:
+                    case RegionType.SOLID:
+                        col_str = "darkorange"
+                    case RegionType.NAVIGABLE_DEEP_WATER:
+                        col_str = "cornsilk"
+                    case RegionType.NAVIGABLE_SHALLOW_WATER:
+                        col_str = "coral2"
+                    case _:
+                        col_str = "chocolate4"
+
+                camera_adjusted_rect = region_rect.move(camera_screen_offset_x, camera_screen_offset_y)
+                pygame.draw.rect(screen, pygame.Color(col_str), camera_adjusted_rect, width=2)
             
-            # Shift the player's world collision rectangle into screen coordinates for drawing.
+            # Shift the player's collision rectangle into screen coordinates for debug drawing.
             base_player_crect = player.get_collision_rect()
             camera_adjusted_rect = base_player_crect.move(camera_screen_offset_x, camera_screen_offset_y)
             pygame.draw.rect(screen, pygame.Color('darkorchid1'), camera_adjusted_rect, width=2)
