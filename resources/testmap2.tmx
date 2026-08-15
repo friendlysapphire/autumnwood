@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="60" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="6" nextobjectid="88">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="60" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="6" nextobjectid="94">
  <tileset firstgid="1" source="TileSnow.tsx"/>
  <tileset firstgid="133" source="TileCliff.tsx"/>
  <tileset firstgid="245" source="TreeAndStoneSprites.tsx"/>
@@ -151,7 +151,7 @@
   <object id="66" x="94.6667" y="1092" width="24" height="17.3333"/>
   <object id="67" x="33.3333" y="1090.67" width="28" height="13.3333"/>
  </objectgroup>
- <objectgroup id="5" name="Regions" locked="1">
+ <objectgroup id="5" name="Regions">
   <object id="75" x="0" y="0" width="257.333" height="256">
    <properties>
     <property name="region_type" value="nav_deep_water"/>
@@ -190,6 +190,13 @@
   <object id="87" x="289.333" y="96" width="28" height="28">
    <properties>
     <property name="region_type" value="nav_deep_water"/>
+   </properties>
+  </object>
+  <object id="88" name="special_forest_entrance" x="1061.33" y="721.333" width="82.6667" height="60">
+   <properties>
+    <property name="destination_map" value="special_forest"/>
+    <property name="destination_spawn" value="entrance"/>
+    <property name="region_type" value="map_transition"/>
    </properties>
   </object>
  </objectgroup>

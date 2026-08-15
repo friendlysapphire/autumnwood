@@ -1,7 +1,8 @@
 from character import Character, AnimationState
+from collections.abc import Sequence
 from pathlib import Path
 from pytmx.util_pygame import load_pygame
-from region import Region, RegionType
+from region import MapTransitionRegion,Region, RegionType
 
 import pygame
 import pytmx
@@ -91,12 +92,13 @@ def get_clamped_camera_position(*,
 
 # Load gameplay regions from Tiled.
 # Collision-layer objects are always SOLID; Regions-layer objects define their type explicitly.
-def get_map_regions(tiled_map: pytmx.TiledMap) -> list[Region]:
+def get_map_regions(tiled_map: pytmx.TiledMap) -> tuple[Region, ...]:
 
     region_list: list[Region] = []
 
     for layer in tiled_map.layers:
         if isinstance(layer, pytmx.TiledObjectGroup):
+            #todo switch to match here
             if layer.name == "Collisions":
                 for obj in layer:
                     crect: pygame.Rect = pygame.Rect(obj.x, 
@@ -115,14 +117,41 @@ def get_map_regions(tiled_map: pytmx.TiledMap) -> list[Region]:
 
                     r_type = obj.properties.get("region_type")
 
-                    if r_type:
-                            region_list.append(Region(rect=region_rect, type=RegionType(r_type)))
+                    if r_type == RegionType.MAP_TRANSITION:
+
+                        try:
+                            r_dest_map = obj.properties["destination_map"]
+                            r_dest_spawn = obj.properties["destination_spawn"]
+                        except KeyError as e:
+                            raise KeyError(
+                                f"MapTransition object missing destination_map or "
+                                f"destination_spawn at ({obj.x}, {obj.y}): {obj.properties}"
+                                ) from e
+
+                        region_list.append(MapTransitionRegion(rect=region_rect,
+                                                               destination_map=r_dest_map,
+                                                               destination_spawn=r_dest_spawn))   
+                    elif r_type:
+                        region_list.append(Region(rect=region_rect, type=RegionType(r_type)))
                     else:
-                        raise ValueError(f"All objects in Regions layer need region_type: {obj.x}: {obj.y} : {obj.properties}")
+                        raise KeyError(
+                            f"All objects in Regions layer need region_type: {obj.x}: {obj.y} : {obj.properties}")
 
                         
-    return region_list
+    return tuple(region_list)
 
+def get_regions_intersecting_player(player: Character, map_regions: Sequence[Region]) -> tuple[Region, ...]:
+
+    intersecting_regions: list[Region] = []
+
+    player_collision_rect = player.get_collision_rect()
+
+    # Find every map region currently intersecting the player's collision rectangle.
+    for region in map_regions:
+        if player_collision_rect.colliderect(region.rect):
+            intersecting_regions.append(region)
+
+    return tuple(intersecting_regions)
 
 # Find the named player spawn point in Tiled and return its world coordinates.
 def get_player_start(tiled_map: pytmx.TiledMap) -> tuple[float, float]:
@@ -136,34 +165,51 @@ def get_player_start(tiled_map: pytmx.TiledMap) -> tuple[float, float]:
 
     raise ValueError("Could not find initial player start location.")
 
+# apply effects on player based on regions they are curently intersecting
+# does not perform generic collision detection in connection with checking for a valid proposed move.
+def apply_region_effects(player: Character,
+                         map_regions: Sequence[Region]
+                         ) -> None:
+    
+    # determine intersecting regions at new position and apply region effects
+    intersecting_regions = get_regions_intersecting_player(player=player,
+                                                           map_regions=map_regions)
 
-# Check the proposed player collision box against regions that are not walkable by default.
+    for region in intersecting_regions:
+
+        if isinstance(region, MapTransitionRegion):
+            print("apply map transition magic!")
+    
+
+# A proposed position is valid only if the character stays within the map
+# and does not overlap a region that blocks movement.
 def is_proposed_player_move_valid(
-    *,
-    proposed_x: float,
-    proposed_y: float,
-    char: Character,
-    map_regions: list[Region],
-    map_width: int,
-    map_height: int,
-) -> bool:
+        *,
+        proposed_x: float,
+        proposed_y: float,
+        char: Character,
+        map_regions: Sequence[Region],
+        map_width: int,
+        map_height: int,
+        ) -> bool:
 
     in_bounds = char.is_within_bounds(
-        proposed_x, proposed_y, x_size=map_width, y_size=map_height
+        proposed_x,
+        proposed_y,
+        x_size=map_width,
+        y_size=map_height,
     )
 
     player_collision_rect = char.get_collision_rect(proposed_x, proposed_y)
-    no_collision = True
 
-    # Check the proposed player collision box against regions that currently block movement.
+    # Check the proposed player collision box against regions that are not walkable by default.
     for region in map_regions:
+
         if not region.is_walkable_by_default():
             if player_collision_rect.colliderect(region.rect):
-                no_collision = False
-                break
+                return False
 
-    return in_bounds and no_collision
-
+    return in_bounds
 
 # Resolve the player's attempted movement after direction has been set.
 # For diagonal movement, try the full move first, then X-only, then Y-only.
@@ -175,7 +221,7 @@ def update_player_position(
     delta_secs: float,
     map_width: int,
     map_height: int,
-    map_regions: list[Region],
+    map_regions: Sequence[Region],
 ) -> None:
 
     # Skip movement calculations when neither axis has input.
@@ -282,7 +328,7 @@ def main() -> None:
 
 
     # Load the gameplay regions defined in the map.
-    map_regions: list[Region] = get_map_regions(tiled_map)
+    map_regions: tuple[Region, ...] = get_map_regions(tiled_map)
 
     # Track whether this frame contains horizontal or vertical movement input.
     move_attempt_x: bool = False
@@ -349,6 +395,10 @@ def main() -> None:
             map_regions=map_regions,
         )
 
+        # using new player position, apply any effects based on intersecting regions
+        apply_region_effects(player=player, 
+                             map_regions=map_regions)
+
         camera_x, camera_y = get_clamped_camera_position(character_world_x=player.world_x,
                                                          character_world_y=player.world_y, 
                                                          map_width=map_width,
@@ -392,19 +442,20 @@ def main() -> None:
             for region in map_regions:
                 region_rect = region.rect
 
-                # Use distinct colors so different region types are easy to identify while debugging.
                 match region.type:
                     case RegionType.SOLID:
-                        col_str = "darkorange"
+                        debug_rect_color = "darkorange"
                     case RegionType.NAVIGABLE_DEEP_WATER:
-                        col_str = "cornsilk"
+                        debug_rect_color = "cornsilk"
                     case RegionType.NAVIGABLE_SHALLOW_WATER:
-                        col_str = "coral2"
+                        debug_rect_color = "coral2"
+                    case RegionType.MAP_TRANSITION:
+                        debug_rect_color = "deeppink1"
                     case _:
-                        col_str = "chocolate4"
+                        debug_rect_color = "chocolate4"
 
                 camera_adjusted_rect = region_rect.move(camera_screen_offset_x, camera_screen_offset_y)
-                pygame.draw.rect(screen, pygame.Color(col_str), camera_adjusted_rect, width=2)
+                pygame.draw.rect(screen, debug_rect_color, camera_adjusted_rect, width=2)
             
             # Shift the player's collision rectangle into screen coordinates for debug drawing.
             base_player_crect = player.get_collision_rect()
