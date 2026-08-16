@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from pytmx.util_pygame import load_pygame
 from pytmx import TiledMap
-from region import MapTransitionRegion,Region, RegionType
+from region import MapTransitionRegion,Region, QuicksandRegion, RegionType
 from region_effects import RegionEffects, SpeedRegionEffect, MapTransitionRegionEffect
 
 import pygame
@@ -17,8 +17,8 @@ WINDOW_HEIGHT = 640
 FRAMES_PER_SECOND = 60
 
 PROJECT_ROOT = Path(__file__).parent
-MAP_PATH = PROJECT_ROOT / "resources"
-BASE_MAP_PATH = MAP_PATH / "testmap2.tmx"
+MAPS_PATH = PROJECT_ROOT / "resources"
+BASE_MAP_PATH = MAPS_PATH / "testmap2.tmx"
 
 
 # Elf Mage player construction details
@@ -64,6 +64,8 @@ ELF_MAGE_FILE_PATH = (
 )
 
 BEGIN_GAME_SPAWN_NAME = "player_start"
+
+QUICKSAND_PERCENT_CHANGE = -0.35
 
 # Recalculate the camera after movement so it follows the player's current world position.
 def get_clamped_camera_position(*,
@@ -135,7 +137,10 @@ def get_map_regions(tiled_map: pytmx.TiledMap) -> tuple[Region, ...]:
 
                         region_list.append(MapTransitionRegion(rect=region_rect,
                                                                destination_map=r_dest_map,
-                                                               destination_spawn=r_dest_spawn))   
+                                                               destination_spawn=r_dest_spawn)) 
+                    elif r_type == RegionType.QUICKSAND:
+                        region_list.append(QuicksandRegion(rect=region_rect,
+                                                           percent_change=QUICKSAND_PERCENT_CHANGE))  
                     elif r_type:
                         region_list.append(Region(rect=region_rect, type=RegionType(r_type)))
                     else:
@@ -192,7 +197,13 @@ def get_region_effects(player: Character,
 
             effect = MapTransitionRegionEffect(destination_map=region.destination_map,
                                                destination_spawn=region.destination_spawn)
-            region_effects.map_transition_effect = effect
+            region_effects.post_move_effects.append(effect)
+
+        elif (isinstance(region,QuicksandRegion)):
+            effect = SpeedRegionEffect(percent_change=region.percent_change)
+            region_effects.pre_move_effects.append(effect)
+
+
 
     return region_effects
 
@@ -406,6 +417,16 @@ def main() -> None:
             player.direction_y = 1
             move_attempt_y = True
 
+        # Determine any effects caused by the regions curently occupied
+        region_effects = get_region_effects(player=player,
+                                            map_regions=map_regions)
+        
+        # Process effects that modify the upcoming movement.
+        for effect in region_effects.pre_move_effects:
+
+            if isinstance(effect, SpeedRegionEffect):
+                print(f"speed region! : {effect.percent_change}")
+
         # Validate and apply the attempted movement against map bounds and obstacles.
         update_player_position(
             move_attempt_x=move_attempt_x,
@@ -420,21 +441,20 @@ def main() -> None:
         # Determine any effects caused by the regions occupied after movement resolves.
         region_effects = get_region_effects(player=player,
                                             map_regions=map_regions)
+        
+        # Process effects triggered by the player's position after movement resolves.
+        for effect in region_effects.post_move_effects:
 
-        if eff := region_effects.map_transition_effect:
-            print("main loop has map transition to process")
-            print(f"{eff.destination_map} : {eff.destination_spawn}")
+            if isinstance(effect, MapTransitionRegionEffect):
+                # Replace the active map, regions, and dimensions with the transition destination.
+                dest_path = MAPS_PATH / f"{effect.destination_map}.tmx"
+                tiled_map, map_regions, map_height, map_width = load_map_and_regions(dest_path)
 
-            # Replace the active map, regions, and dimensions with the transition destination.
-            dest_path = MAP_PATH / f"{eff.destination_map}.tmx"
-            tiled_map, map_regions, map_height, map_width = load_map_and_regions(dest_path)
+                # Find the destination spawn in the new map and place the existing player there.
+                spawn_x, spawn_y = get_player_start(tiled_map, effect.destination_spawn)
 
-            # Find the destination spawn in the new map and place the existing player there.
-            spawn_x, spawn_y = get_player_start(tiled_map, eff.destination_spawn)
-
-            # can't use the Character on the map / in the world until we spawn()
-            player.spawn(spawn_x, spawn_y)
-
+                # can't use the Character on the map / in the world until we spawn()
+                player.spawn(spawn_x, spawn_y)
 
         camera_x, camera_y = get_clamped_camera_position(character_world_x=player.world_x,
                                                          character_world_y=player.world_y, 
@@ -488,6 +508,8 @@ def main() -> None:
                         debug_rect_color = "coral2"
                     case RegionType.MAP_TRANSITION:
                         debug_rect_color = "deeppink1"
+                    case RegionType.QUICKSAND:
+                        debug_rect_color = "goldenrod3"
                     case _:
                         debug_rect_color = "chocolate4"
 

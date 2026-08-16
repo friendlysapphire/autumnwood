@@ -9,6 +9,7 @@ class RegionType(StrEnum):
     NAVIGABLE_DEEP_WATER = "nav_deep_water"
     NAVIGABLE_SHALLOW_WATER = "nav_shallow_water"
     MAP_TRANSITION = "map_transition"
+    QUICKSAND = "quicksand"
 
 @dataclass(kw_only=True)
 class Region:
@@ -21,7 +22,7 @@ class Region:
         match self.type:
             case RegionType.SOLID | RegionType.NAVIGABLE_DEEP_WATER:
                 return False
-            case RegionType.NAVIGABLE_SHALLOW_WATER | RegionType.MAP_TRANSITION:
+            case RegionType.NAVIGABLE_SHALLOW_WATER | RegionType.MAP_TRANSITION | RegionType.QUICKSAND:
                 return True
             case _:
                 raise ValueError(f"Region type {self.type} needs defined walkable_by_default behavior.")
@@ -34,3 +35,10 @@ class MapTransitionRegion(Region):
     destination_map: str
     destination_spawn: str
     type: RegionType = field(init=False, default=RegionType.MAP_TRANSITION)
+
+# A quicksand region slows the player by a percentage of their speed
+@dataclass(kw_only=True)
+class QuicksandRegion(Region):
+    percent_change: float
+    type: RegionType = field(init=False, default=RegionType.QUICKSAND)
+

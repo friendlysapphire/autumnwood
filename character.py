@@ -63,7 +63,7 @@ class Character:
         self._collision_box_width = collision_box_width
 
         # speed in pixels per second
-        self._default_speed = default_speed
+        self.default_speed = default_speed
         self.speed = default_speed
 
         # These offsets describe the transparent padding around the walking sprite.
