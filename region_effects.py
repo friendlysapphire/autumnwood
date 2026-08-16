@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from enum import StrEnum
 
 type RegionEffect = SpeedRegionEffect | MapTransitionRegionEffect
 

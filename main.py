@@ -2,7 +2,6 @@ from character import Character, AnimationState
 from collections.abc import Sequence
 from pathlib import Path
 from pytmx.util_pygame import load_pygame
-from pytmx import TiledMap
 from region import MapTransitionRegion,Region, QuicksandRegion, RegionType
 from region_effects import RegionEffects, SpeedRegionEffect, MapTransitionRegionEffect
 
@@ -141,6 +140,7 @@ def get_map_regions(tiled_map: pytmx.TiledMap) -> tuple[Region, ...]:
                     elif r_type == RegionType.QUICKSAND:
                         region_list.append(QuicksandRegion(rect=region_rect,
                                                            percent_change=QUICKSAND_PERCENT_CHANGE))  
+                    # Region types that need no additional runtime data can use the base Region class.
                     elif r_type:
                         region_list.append(Region(rect=region_rect, type=RegionType(r_type)))
                     else:
