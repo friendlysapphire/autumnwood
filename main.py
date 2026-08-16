@@ -2,7 +2,9 @@ from character import Character, AnimationState
 from collections.abc import Sequence
 from pathlib import Path
 from pytmx.util_pygame import load_pygame
+from pytmx import TiledMap
 from region import MapTransitionRegion,Region, RegionType
+from region_effects import RegionEffects, SpeedRegionEffect, MapTransitionRegionEffect
 
 import pygame
 import pytmx
@@ -15,7 +17,8 @@ WINDOW_HEIGHT = 640
 FRAMES_PER_SECOND = 60
 
 PROJECT_ROOT = Path(__file__).parent
-MAP_PATH = PROJECT_ROOT / "resources" / "testmap2.tmx"
+MAP_PATH = PROJECT_ROOT / "resources"
+BASE_MAP_PATH = MAP_PATH / "testmap2.tmx"
 
 
 # Elf Mage player construction details
@@ -59,6 +62,8 @@ ELF_MAGE_FILE_PATH = (
     / "Units"
     / "ElfMage_64.png"
 )
+
+BEGIN_GAME_SPAWN_NAME = "player_start"
 
 # Recalculate the camera after movement so it follows the player's current world position.
 def get_clamped_camera_position(*,
@@ -140,6 +145,7 @@ def get_map_regions(tiled_map: pytmx.TiledMap) -> tuple[Region, ...]:
                         
     return tuple(region_list)
 
+# Return every gameplay region currently intersecting the player's collision rectangle.
 def get_regions_intersecting_player(player: Character, map_regions: Sequence[Region]) -> tuple[Region, ...]:
 
     intersecting_regions: list[Region] = []
@@ -153,33 +159,42 @@ def get_regions_intersecting_player(player: Character, map_regions: Sequence[Reg
 
     return tuple(intersecting_regions)
 
-# Find the named player spawn point in Tiled and return its world coordinates.
-def get_player_start(tiled_map: pytmx.TiledMap) -> tuple[float, float]:
+# Find the requested named spawn point in Tiled and return its world coordinates.
+def get_player_start(tiled_map: pytmx.TiledMap,
+                     spawn_name: str) -> tuple[float, float]:
 
     for layer in tiled_map.layers:
         if isinstance(layer, pytmx.TiledObjectGroup):
             if layer.name == "Spawns":
                 for obj in layer:
-                    if obj.name == "player_start":
+                    if obj.name == spawn_name:
                         return (obj.x, obj.y)
 
-    raise ValueError("Could not find initial player start location.")
+    raise ValueError(f"Could not find player spawn location {spawn_name} for {tiled_map.filename}.")
 
-# apply effects on player based on regions they are curently intersecting
+# Determine the gameplay effects implied by the regions the player currently occupies.
+# This only describes effects; the main loop is responsible for applying them.
 # does not perform generic collision detection in connection with checking for a valid proposed move.
-def apply_region_effects(player: Character,
+def get_region_effects(player: Character,
                          map_regions: Sequence[Region]
-                         ) -> None:
+                         ) -> RegionEffects:
+
     
-    # determine intersecting regions at new position and apply region effects
+    # Gather the regions occupied at the player's current position.
     intersecting_regions = get_regions_intersecting_player(player=player,
                                                            map_regions=map_regions)
+
+    region_effects = RegionEffects()
 
     for region in intersecting_regions:
 
         if isinstance(region, MapTransitionRegion):
-            print("apply map transition magic!")
-    
+
+            effect = MapTransitionRegionEffect(destination_map=region.destination_map,
+                                               destination_spawn=region.destination_spawn)
+            region_effects.map_transition_effect = effect
+
+    return region_effects
 
 # A proposed position is valid only if the character stays within the map
 # and does not overlap a region that blocks movement.
@@ -286,6 +301,21 @@ def update_player_position(
         ):
             player.world_y = proposed_y
 
+# Load a Tiled map and derive the runtime region collection and pixel dimensions it needs.
+def load_map_and_regions(path: Path) -> tuple[pytmx.TiledMap, tuple[Region, ...], int, int]:
+
+    # Load the Tiled map and its referenced tile images.
+    tiled_map = load_pygame(path)
+
+    # Load the gameplay regions defined by the map.
+    map_regions: tuple[Region, ...] = get_map_regions(tiled_map)
+
+    # Convert the map dimensions from tiles into world pixels.
+    map_height = tiled_map.height * tiled_map.tileheight
+    map_width = tiled_map.width * tiled_map.tilewidth
+
+    return (tiled_map, map_regions, map_height, map_width)
+
 
 def main() -> None:
     # Set up Pygame and create the game window.
@@ -294,12 +324,8 @@ def main() -> None:
     pygame.display.set_caption("Xiao map test")
     clock = pygame.time.Clock()
 
-    # Load the Tiled map and its referenced tile images.
-    tiled_map = load_pygame(MAP_PATH)
-
-    # Convert the map dimensions from tiles into world pixels.
-    map_height = tiled_map.height * tiled_map.tileheight
-    map_width = tiled_map.width * tiled_map.tilewidth
+    # Load the initial map and unpack the runtime state used by the game loop.
+    tiled_map, map_regions, map_height, map_width = load_map_and_regions(BASE_MAP_PATH)
 
     # Create the player-controlled Character using the Elf Mage's
     # animation, alignment, collision, and visible-bound settings.
@@ -321,14 +347,10 @@ def main() -> None:
     )
 
     # get player start location
-    spawn_x, spawn_y = get_player_start(tiled_map)
+    spawn_x, spawn_y = get_player_start(tiled_map, BEGIN_GAME_SPAWN_NAME)
 
     # can't use the Character on the map / in the world until we spawn()
     player.spawn(spawn_x, spawn_y)
-
-
-    # Load the gameplay regions defined in the map.
-    map_regions: tuple[Region, ...] = get_map_regions(tiled_map)
 
     # Track whether this frame contains horizontal or vertical movement input.
     move_attempt_x: bool = False
@@ -395,9 +417,24 @@ def main() -> None:
             map_regions=map_regions,
         )
 
-        # using new player position, apply any effects based on intersecting regions
-        apply_region_effects(player=player, 
-                             map_regions=map_regions)
+        # Determine any effects caused by the regions occupied after movement resolves.
+        region_effects = get_region_effects(player=player,
+                                            map_regions=map_regions)
+
+        if eff := region_effects.map_transition_effect:
+            print("main loop has map transition to process")
+            print(f"{eff.destination_map} : {eff.destination_spawn}")
+
+            # Replace the active map, regions, and dimensions with the transition destination.
+            dest_path = MAP_PATH / f"{eff.destination_map}.tmx"
+            tiled_map, map_regions, map_height, map_width = load_map_and_regions(dest_path)
+
+            # Find the destination spawn in the new map and place the existing player there.
+            spawn_x, spawn_y = get_player_start(tiled_map, eff.destination_spawn)
+
+            # can't use the Character on the map / in the world until we spawn()
+            player.spawn(spawn_x, spawn_y)
+
 
         camera_x, camera_y = get_clamped_camera_position(character_world_x=player.world_x,
                                                          character_world_y=player.world_y, 
