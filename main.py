@@ -1,9 +1,10 @@
 from character import Character, AnimationState
 from collections.abc import Sequence
+from modifiers import SpeedModifier
 from pathlib import Path
 from pytmx.util_pygame import load_pygame
 from region import MapTransitionRegion,Region, QuicksandRegion, RegionType
-from region_effects import RegionEffects, SpeedRegionEffect, MapTransitionRegionEffect
+from region_effects import ActiveRegionEffects, SpeedRegionEffect, MapTransitionRegionEffect
 
 import pygame
 import pytmx
@@ -64,7 +65,7 @@ ELF_MAGE_FILE_PATH = (
 
 BEGIN_GAME_SPAWN_NAME = "player_start"
 
-QUICKSAND_PERCENT_CHANGE = -0.35
+QUICKSAND_PERCENT_CHANGE = -0.50
 
 # Recalculate the camera after movement so it follows the player's current world position.
 def get_clamped_camera_position(*,
@@ -182,14 +183,14 @@ def get_player_start(tiled_map: pytmx.TiledMap,
 # does not perform generic collision detection in connection with checking for a valid proposed move.
 def get_region_effects(player: Character,
                          map_regions: Sequence[Region]
-                         ) -> RegionEffects:
+                         ) -> ActiveRegionEffects:
 
     
     # Gather the regions occupied at the player's current position.
     intersecting_regions = get_regions_intersecting_player(player=player,
                                                            map_regions=map_regions)
 
-    region_effects = RegionEffects()
+    region_effects = ActiveRegionEffects()
 
     for region in intersecting_regions:
 
@@ -248,6 +249,7 @@ def update_player_position(
     map_width: int,
     map_height: int,
     map_regions: Sequence[Region],
+    speed_modifiers: Sequence[SpeedModifier]
 ) -> None:
 
     # Skip movement calculations when neither axis has input.
@@ -255,7 +257,7 @@ def update_player_position(
         return
 
     # Calculate the position the current direction and frame time would produce.
-    proposed_x, proposed_y = player.get_proposed_new_position(delta_secs)
+    proposed_x, proposed_y = player.get_proposed_new_position(delta_secs, speed_modifiers)
 
     # Try diagonal movement first. If blocked, slide along an available axis.
     if move_attempt_x and move_attempt_y:
@@ -421,11 +423,21 @@ def main() -> None:
         region_effects = get_region_effects(player=player,
                                             map_regions=map_regions)
         
-        # Process effects that modify the upcoming movement.
+        # Marshal pre-move effects that modify the upcoming movement.
+
+        # the only pre-move effects are speed modifiers for now. pre_move_effects will eventually be 
+        # non-speed modifiers that need pre-move processing.
+
+        #pre_move_effects = []
+        speed_modifiers = []
         for effect in region_effects.pre_move_effects:
 
             if isinstance(effect, SpeedRegionEffect):
-                print(f"speed region! : {effect.percent_change}")
+                #print(f"speed region! : {effect.percent_change}")
+                speed_modifiers.append(effect)
+
+
+        # TODO: process pre-move effects except for SpeedModifiers (which affect player positioning, below)
 
         # Validate and apply the attempted movement against map bounds and obstacles.
         update_player_position(
@@ -436,6 +448,7 @@ def main() -> None:
             map_width=map_width,
             map_height=map_height,
             map_regions=map_regions,
+            speed_modifiers=speed_modifiers
         )
 
         # Determine any effects caused by the regions occupied after movement resolves.

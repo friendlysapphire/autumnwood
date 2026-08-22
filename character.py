@@ -1,4 +1,6 @@
+from collections.abc import Sequence
 from enum import StrEnum
+from modifiers import SpeedModifier
 from pathlib import Path
 from typing import Literal
 
@@ -160,10 +162,19 @@ class Character:
 
     # Calculate where the current direction and speed would move the character
     # without changing its actual world position.
-    def get_proposed_new_position(self, delta_secs: float) -> tuple[float, float]:
+    def get_proposed_new_position(self, delta_secs: float, 
+                                  speed_modifiers: Sequence[SpeedModifier] = ()
+                                  ) -> tuple[float, float]:
 
-        new_x = self.world_x + (self.direction_x * self.speed * delta_secs)
-        new_y = self.world_y + (self.direction_y * self.speed * delta_secs)
+
+        # Calculate the combined percentage change from all active speed modifiers.
+        aggregate_pct_change = sum(m.percent_change for m in speed_modifiers)
+
+        # Apply the temporary modifiers without changing the character's stored speed.
+        effective_speed = self.speed * (1 + aggregate_pct_change)
+
+        new_x = self.world_x + (self.direction_x * effective_speed * delta_secs)
+        new_y = self.world_y + (self.direction_y * effective_speed * delta_secs)
 
         return (new_x, new_y)
 
