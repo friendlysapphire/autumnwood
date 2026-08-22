@@ -334,7 +334,7 @@ def main() -> None:
     # Set up Pygame and create the game window.
     pygame.init()
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-    pygame.display.set_caption("Xiao map test")
+    pygame.display.set_caption("Autumnwood map test")
     clock = pygame.time.Clock()
 
     # Load the initial map and unpack the runtime state used by the game loop.

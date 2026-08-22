@@ -2,10 +2,11 @@
 
 This is the checklist for adding a new gameplay region and wiring up any effects it should produce.
 
-The current design separates three ideas:
+The current design separates four ideas:
 
 - **Region**: an area on the map with gameplay meaning.
-- **RegionEffect**: a description of what that region implies for the player right now.
+- **RegionEffect**: one effect produced by occupying a region.
+- **ActiveRegionEffects**: collects the pre-move and post-move effects active at the player's current position.
 - **Game loop processing**: decides when and how those effects are actually applied.
 
 Ordinary impassable scenery stays on Tiled's **Collisions** layer and requires no custom metadata. Special gameplay areas go on the **Regions** layer.
@@ -97,7 +98,7 @@ Create a specialized subclass only when that region needs additional runtime dat
 Examples:
 
 - `MapTransitionRegion` needs `destination_map` and `destination_spawn`.
-- `QuicksandRegion` currently carries its `percent_change`.
+- `QuicksandRegion` carries its `percent_change`.
 - A simple navigable-water region can remain a plain `Region` because its `RegionType` is enough to describe it.
 
 This is why `get_map_regions()` has specific branches for region types that require subclasses, followed by a general branch for any other recognized `RegionType`:
@@ -107,10 +108,9 @@ elif r_type:
     region_list.append(Region(rect=region_rect, type=RegionType(r_type)))
 ```
 
-That branch means: the map supplied a region_type that does not require a specialized subclass, so try to convert it to a RegionType and represent it with the base Region class. RegionType(r_type) will reject an unknown value.
+That branch means: the map supplied a `region_type` that does not require a specialized subclass, so try to convert it to a `RegionType` and represent it with the base `Region` class. `RegionType(r_type)` will reject an unknown value.
 
-The final else is different: it means the Tiled object did not supply a region_type at all, which is an authoring error on the Regions layer.
-
+The final `else` is different: it means the Tiled object did not supply a `region_type` at all, which is an authoring error on the **Regions** layer.
 
 ## 5. Decide whether the region produces an effect
 
@@ -132,22 +132,28 @@ Existing examples:
 
 Each effect dataclass should contain only the data needed to apply that effect.
 
-## 6. Add the effect type to `RegionEffect`
+All concrete region-effect classes inherit from the common `RegionEffect` base class.
 
-If a new effect dataclass is created, add it to the `RegionEffect` type alias.
+## 6. Make the new effect a `RegionEffect`
+
+All region effects inherit from the common `RegionEffect` base class.
 
 Example:
 
 ```python
-type RegionEffect = SpeedRegionEffect | MapTransitionRegionEffect | NewEffect
+@dataclass(kw_only=True)
+class NewRegionEffect(RegionEffect):
+    ...
 ```
 
-`RegionEffects` currently collects effects into:
+`ActiveRegionEffects` collects effects into two mutable lists:
 
 - `pre_move_effects`
 - `post_move_effects`
 
-These are mutable lists, so use `field(default_factory=list)`.
+These use `field(default_factory=list)`.
+
+Add the effect to the appropriate list when `get_region_effects()` discovers the corresponding region.
 
 ## 7. Update `get_region_effects()`
 
@@ -155,17 +161,21 @@ These are mutable lists, so use `field(default_factory=list)`.
 
 1. Finds regions currently intersecting the player.
 2. Determines what effects those regions imply.
-3. Returns a `RegionEffects` object.
+3. Returns an `ActiveRegionEffects` object.
 4. Does **not** apply effects itself.
 
 Use `isinstance()` when behavior depends on data that exists only on a region subclass.
 
 Examples:
 
-- `isinstance(region, MapTransitionRegion)`
-- `isinstance(region, QuicksandRegion)`
+```python
+isinstance(region, MapTransitionRegion)
+isinstance(region, QuicksandRegion)
+```
 
 Then create the appropriate effect and append it to the correct bucket.
+
+The region subclass and the effect class are separate concepts. The region stores map/runtime data; `get_region_effects()` converts that data into an effect for the game loop to process.
 
 ### Pre-move effects
 
@@ -194,15 +204,65 @@ The frame currently follows this pattern:
 6. Draw the frame.
 ```
 
-Add handling for the new effect in the appropriate section.
+The game loop processes only the effects relevant to each phase.
+
+Before movement, it examines `pre_move_effects` and derives the inputs needed for movement. After movement, it queries the player's new position and processes `post_move_effects`.
 
 Use `isinstance()` to narrow a general `RegionEffect` to the specific effect dataclass before accessing effect-specific fields.
 
-## 9. Speed effects: important rule
+Do not pass an arbitrary collection of unrelated region effects into a subsystem. Process the effects first and pass that subsystem only the inputs relevant to it.
 
-Do **not** permanently overwrite the player's stored speed for temporary terrain effects such as quicksand.
+For example, movement receives speed modifiers rather than every possible pre-move region effect.
 
-Future persistent factors may also affect normal speed:
+## 9. Speed effects and `SpeedModifier`
+
+Temporary terrain effects must not overwrite the character's stored speed.
+
+The character remains the source of truth for its normal speed. Temporary movement changes are represented through the `SpeedModifier` protocol:
+
+```python
+class SpeedModifier(Protocol):
+    percent_change: float
+```
+
+Anything with a compatible `percent_change` attribute can satisfy this protocol. `SpeedRegionEffect` therefore works as a `SpeedModifier` without needing to inherit from it or explicitly declare that it implements the protocol.
+
+Before movement:
+
+1. Collect applicable `SpeedRegionEffect`s from `pre_move_effects`.
+2. Pass them to the movement code as `SpeedModifier`s.
+3. The character sums their percentage changes.
+4. It calculates a temporary effective speed for this movement only.
+5. The character's stored speed is not changed.
+
+Conceptually:
+
+```text
+stored character speed
++ active SpeedModifiers
+-> effective speed for this movement
+-> proposed position
+```
+
+Multiple percentage modifiers are currently additive.
+
+For example:
+
+```text
+quicksand: -35%
+boots:     +10%
+----------------
+total:     -25%
+```
+
+The character calculates:
+
+```python
+aggregate_pct_change = sum(m.percent_change for m in speed_modifiers)
+effective_speed = self.speed * (1 + aggregate_pct_change)
+```
+
+This leaves room for future non-region speed modifiers such as:
 
 - equipment
 - buffs/debuffs
@@ -210,9 +270,7 @@ Future persistent factors may also affect normal speed:
 - mounts
 - abilities
 
-Instead, calculate a temporary movement speed for the current movement from the player's otherwise-current/effective speed plus current `SpeedRegionEffect`s.
-
-This avoids needing to remember to clear quicksand when the player leaves the region.
+Those systems can provide objects satisfying `SpeedModifier` without needing to know anything about regions.
 
 ## 10. Update debug rendering
 
@@ -235,12 +293,21 @@ Tiled region
 -> Region or Region subclass
 -> player intersection
 -> get_region_effects() if applicable
--> pre/post effect bucket
+-> ActiveRegionEffects pre/post bucket
 -> game-loop processing
+-> subsystem-specific input if applicable
 -> visible gameplay result
 ```
 
-Also test entering, remaining inside, leaving, collision interaction if relevant, and overlap with other regions if possible.
+Also test:
+
+- entering the region
+- remaining inside the region
+- leaving the region
+- collision interaction, if relevant
+- overlap with other regions/effects, if possible
+
+For temporary effects such as quicksand, specifically verify that leaving the region restores normal behavior without requiring cleanup of stored player state.
 
 ## Current examples
 
@@ -269,6 +336,7 @@ Also test entering, remaining inside, leaving, collision interaction if relevant
 - Default walkability: true
 - Effect: `SpeedRegionEffect`
 - Processing: pre-move
+- Speed handling: contributes a `SpeedModifier` to the current movement calculation without changing the player's stored speed
 
 ## Quick checklist
 
@@ -280,8 +348,9 @@ When adding a region, check:
 - optional new `Region` subclass in `region.py`
 - `get_map_regions()`
 - optional new effect dataclass in `region_effects.py`
-- `RegionEffect` type alias
+- new effect subclass of `RegionEffect`, if needed
 - `get_region_effects()`
 - pre-move or post-move processing in the main loop
+- `SpeedModifier` compatibility if the effect changes movement speed
 - debug-overlay color
 - gameplay test
