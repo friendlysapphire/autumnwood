@@ -31,5 +31,5 @@ wheels/
 # Tiled per-user session state
 *.tiled-session
 
-# Purchased asset library
-resources/PixelWorldSprites/
+# Purchased asset libraries
+resources/spritepacks
