@@ -174,19 +174,34 @@ def load_map_regions_and_world_objects(tiled_map: pytmx.TiledMap) -> tuple[tuple
     return tuple(region_list), tuple(world_obj_list)
 
 # Return every gameplay region currently intersecting the player's collision rectangle.
-def get_regions_intersecting_player(player: Character, map_regions: Sequence[Region]) -> tuple[Region, ...]:
+def get_regions_intersecting_character(character: Character,
+                                       map_regions: Sequence[Region]
+                                       ) -> tuple[Region, ...]:
 
     intersecting_regions: list[Region] = []
 
-    player_collision_rect = player.get_collision_rect()
+    char_collision_rect = character.get_collision_rect()
 
     # Find every map region currently intersecting the player's collision rectangle.
     for region in map_regions:
-        if player_collision_rect.colliderect(region.rect):
+        if char_collision_rect.colliderect(region.rect):
             intersecting_regions.append(region)
 
     return tuple(intersecting_regions)
 
+# return every world object intersecting with the character's current position
+def get_world_objs_intersecting_character(character: Character,
+                                          world_objs: Sequence[WorldObject]
+                                          ) -> tuple[WorldObject, ...]:
+    
+    char_collision_rect = character.get_collision_rect()
+
+    intersecting_wobjs = (wobj for wobj in world_objs if char_collision_rect.colliderect(wobj.rect))
+
+    return tuple(intersecting_wobjs)
+
+        
+    
 # Find the requested named spawn point in Tiled and return its world coordinates.
 def get_player_start(tiled_map: pytmx.TiledMap,
                      spawn_name: str) -> tuple[float, float]:
@@ -209,8 +224,8 @@ def get_region_effects(player: Character,
 
     
     # Gather the regions occupied at the player's current position.
-    intersecting_regions = get_regions_intersecting_player(player=player,
-                                                           map_regions=map_regions)
+    intersecting_regions = get_regions_intersecting_character(character=player,
+                                                              map_regions=map_regions)
 
     region_effects = ActiveRegionEffects()
 
@@ -418,9 +433,21 @@ def main() -> None:
                     running = False
 
                 case pygame.KEYDOWN:
-                    if event.key == pygame.K_BACKQUOTE:
-                        show_map_debug_features = not show_map_debug_features
+                    match event.key:
 
+                        case pygame.K_BACKQUOTE:
+                            show_map_debug_features = not show_map_debug_features
+
+                        # E examines/interacts with world objects currently overlapping the player.
+                        case pygame.K_e:  
+                            intersecting_world_objects= get_world_objs_intersecting_character(character=player,
+                                                                                            world_objs=map_world_objects)
+
+                            # process each world object intersecting w/ our player
+                            for wobj in intersecting_world_objects:
+
+                                if isinstance(wobj, AppleTree):
+                                    print(f"You touched an apple tree. If it has a name, it's {wobj.name}")
 
         # Clear the previous frame before drawing the map again.
         screen.fill("black")
@@ -441,6 +468,7 @@ def main() -> None:
         elif pressed_keys[pygame.K_DOWN]:
             player.direction_y = 1
             move_attempt_y = True
+
 
         # Determine any effects caused by the regions curently occupied
         region_effects = get_region_effects(player=player,
@@ -558,8 +586,6 @@ def main() -> None:
                 world_obj_rect = world_object.rect
                 camera_adjusted_rect = world_obj_rect.move(camera_screen_offset_x, camera_screen_offset_y)
                 pygame.draw.rect(screen, "mediumseagreen", camera_adjusted_rect, width=2)
-
-
             
             # Shift the player's collision rectangle into screen coordinates for debug drawing.
             base_player_crect = player.get_collision_rect()
