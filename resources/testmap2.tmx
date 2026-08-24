@@ -96,7 +96,7 @@
  <objectgroup id="6" name="World Objects">
   <object id="94" name="apple_tree_01" x="1132" y="1.33333" width="193.334" height="210.667">
    <properties>
-    <property name="object_type" value="apple_tree"/>
+    <property name="world_object_type" value="apple_tree"/>
    </properties>
   </object>
  </objectgroup>

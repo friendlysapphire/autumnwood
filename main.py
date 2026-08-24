@@ -5,6 +5,7 @@ from pathlib import Path
 from pytmx.util_pygame import load_pygame
 from region import MapTransitionRegion,Region, QuicksandRegion, RegionType
 from region_effects import ActiveRegionEffects, SpeedRegionEffect, MapTransitionRegionEffect
+from world_object import WorldObject, WorldObjectType, AppleTree
 
 import pygame
 import pytmx
@@ -18,8 +19,8 @@ FRAMES_PER_SECOND = 60
 
 PROJECT_ROOT = Path(__file__).parent
 MAPS_PATH = PROJECT_ROOT / "resources"
+SPRITE_BASE_PATH = PROJECT_ROOT / "resources" / "spritepacks"
 BASE_MAP_PATH = MAPS_PATH / "testmap2.tmx"
-
 
 # Elf Mage player construction details
 # player speed is in pixels per second
@@ -55,8 +56,7 @@ ELF_MAGE_SPRITE_ANIMS = {
 }
 
 ELF_MAGE_FILE_PATH = (
-    PROJECT_ROOT
-    / "resources"
+    SPRITE_BASE_PATH
     / "PixelWorldSprites"
     / "UnitsSprites"
     / "Units"
@@ -97,11 +97,13 @@ def get_clamped_camera_position(*,
 
     return camera_x, camera_y
 
-# Load gameplay regions from Tiled.
+# Load gameplay regions & world objects from Tiled.
 # Collision-layer objects are always SOLID; Regions-layer objects define their type explicitly.
-def get_map_regions(tiled_map: pytmx.TiledMap) -> tuple[Region, ...]:
+# called as helper by load_map() (you probably don't need to call directly)
+def load_map_regions_and_world_objects(tiled_map: pytmx.TiledMap) -> tuple[tuple[Region, ...], tuple[WorldObject, ...]]:
 
     region_list: list[Region] = []
+    world_obj_list: list[WorldObject] = []
 
     for layer in tiled_map.layers:
         if isinstance(layer, pytmx.TiledObjectGroup):
@@ -114,6 +116,26 @@ def get_map_regions(tiled_map: pytmx.TiledMap) -> tuple[Region, ...]:
                                                      obj.height)
                     
                     region_list.append(Region(rect=crect, type=RegionType.SOLID))
+
+            if layer.name == "World Objects":
+                for obj in layer:
+                    world_obj_rect = pygame.Rect(obj.x,
+                                              obj.y,
+                                              obj.width,
+                                              obj.height)
+                    
+                    obj_type = obj.properties.get("world_object_type")
+
+                    if obj_type == WorldObjectType.APPLE_TREE:
+                        world_obj = AppleTree(rect=world_obj_rect,
+                                              name=obj.name)
+
+                        world_obj_list.append(world_obj)
+                    else:
+                        raise KeyError(
+                            f"World Object at ({obj.x}, {obj.y}) needs a recognized "
+                            f"world_object_type: {obj.properties}"
+                        )
 
             if layer.name == "Regions":
                 for obj in layer:
@@ -149,7 +171,7 @@ def get_map_regions(tiled_map: pytmx.TiledMap) -> tuple[Region, ...]:
                             f"All objects in Regions layer need region_type: {obj.x}: {obj.y} : {obj.properties}")
 
                         
-    return tuple(region_list)
+    return tuple(region_list), tuple(world_obj_list)
 
 # Return every gameplay region currently intersecting the player's collision rectangle.
 def get_regions_intersecting_player(player: Character, map_regions: Sequence[Region]) -> tuple[Region, ...]:
@@ -203,8 +225,6 @@ def get_region_effects(player: Character,
         elif (isinstance(region,QuicksandRegion)):
             effect = SpeedRegionEffect(percent_change=region.percent_change)
             region_effects.pre_move_effects.append(effect)
-
-
 
     return region_effects
 
@@ -314,20 +334,16 @@ def update_player_position(
         ):
             player.world_y = proposed_y
 
-# Load a Tiled map and derive the runtime region collection and pixel dimensions it needs.
-def load_map_and_regions(path: Path) -> tuple[pytmx.TiledMap, tuple[Region, ...], int, int]:
+# Load a Tiled map + its regions + world objects
+def load_map(path: Path) -> tuple[pytmx.TiledMap, tuple[Region, ...], tuple[WorldObject, ...]]:
 
     # Load the Tiled map and its referenced tile images.
     tiled_map = load_pygame(path)
 
     # Load the gameplay regions defined by the map.
-    map_regions: tuple[Region, ...] = get_map_regions(tiled_map)
+    map_regions, map_world_objects = load_map_regions_and_world_objects(tiled_map)
 
-    # Convert the map dimensions from tiles into world pixels.
-    map_height = tiled_map.height * tiled_map.tileheight
-    map_width = tiled_map.width * tiled_map.tilewidth
-
-    return (tiled_map, map_regions, map_height, map_width)
+    return (tiled_map, map_regions, map_world_objects)
 
 
 def main() -> None:
@@ -338,7 +354,14 @@ def main() -> None:
     clock = pygame.time.Clock()
 
     # Load the initial map and unpack the runtime state used by the game loop.
-    tiled_map, map_regions, map_height, map_width = load_map_and_regions(BASE_MAP_PATH)
+    tiled_map, map_regions, map_world_objects = load_map(BASE_MAP_PATH)
+
+    print(map_world_objects)
+
+    # Convert the map dimensions from tiles into world pixels.
+    map_height = tiled_map.height * tiled_map.tileheight
+    map_width = tiled_map.width * tiled_map.tilewidth
+
 
     # Create the player-controlled Character using the Elf Mage's
     # animation, alignment, collision, and visible-bound settings.
@@ -429,11 +452,10 @@ def main() -> None:
         # non-speed modifiers that need pre-move processing.
 
         #pre_move_effects = []
-        speed_modifiers = []
+        speed_modifiers: list[SpeedModifier] = []
         for effect in region_effects.pre_move_effects:
 
             if isinstance(effect, SpeedRegionEffect):
-                #print(f"speed region! : {effect.percent_change}")
                 speed_modifiers.append(effect)
 
 
@@ -461,7 +483,10 @@ def main() -> None:
             if isinstance(effect, MapTransitionRegionEffect):
                 # Replace the active map, regions, and dimensions with the transition destination.
                 dest_path = MAPS_PATH / f"{effect.destination_map}.tmx"
-                tiled_map, map_regions, map_height, map_width = load_map_and_regions(dest_path)
+                tiled_map, map_regions, map_world_objects  = load_map(dest_path)
+
+                map_height = tiled_map.height * tiled_map.tileheight
+                map_width = tiled_map.width * tiled_map.tilewidth
 
                 # Find the destination spawn in the new map and place the existing player there.
                 spawn_x, spawn_y = get_player_start(tiled_map, effect.destination_spawn)
@@ -528,6 +553,13 @@ def main() -> None:
 
                 camera_adjusted_rect = region_rect.move(camera_screen_offset_x, camera_screen_offset_y)
                 pygame.draw.rect(screen, debug_rect_color, camera_adjusted_rect, width=2)
+
+            for world_object in map_world_objects:
+                world_obj_rect = world_object.rect
+                camera_adjusted_rect = world_obj_rect.move(camera_screen_offset_x, camera_screen_offset_y)
+                pygame.draw.rect(screen, "mediumseagreen", camera_adjusted_rect, width=2)
+
+
             
             # Shift the player's collision rectangle into screen coordinates for debug drawing.
             base_player_crect = player.get_collision_rect()
