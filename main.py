@@ -178,15 +178,14 @@ def get_regions_intersecting_character(character: Character,
                                        map_regions: Sequence[Region]
                                        ) -> tuple[Region, ...]:
 
-    intersecting_regions: list[Region] = []
-
     char_collision_rect = character.get_collision_rect()
 
-    # Find every map region currently intersecting the player's collision rectangle.
-    for region in map_regions:
-        if char_collision_rect.colliderect(region.rect):
-            intersecting_regions.append(region)
-
+    intersecting_regions = (
+        region
+        for region in map_regions
+        if char_collision_rect.colliderect(region.rect)
+        )
+  
     return tuple(intersecting_regions)
 
 # return every world object intersecting with the character's current position
@@ -196,7 +195,11 @@ def get_world_objs_intersecting_character(character: Character,
     
     char_collision_rect = character.get_collision_rect()
 
-    intersecting_wobjs = (wobj for wobj in world_objs if char_collision_rect.colliderect(wobj.rect))
+    intersecting_wobjs = (
+        wobj
+        for wobj in world_objs
+        if char_collision_rect.colliderect(wobj.rect)
+        )
 
     return tuple(intersecting_wobjs)
 
