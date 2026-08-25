@@ -1,5 +1,6 @@
 from character import Character, AnimationState
 from collections.abc import Sequence
+from messages import GameMessageDismissPolicy, GameMessage
 from modifiers import SpeedModifier
 from pathlib import Path
 from pytmx.util_pygame import load_pygame
@@ -14,6 +15,9 @@ import pytmx
 
 WINDOW_WIDTH = 960
 WINDOW_HEIGHT = 640
+MESSAGES_PANEL_HEIGHT = 96
+MESSAGES_PANEL_WIDTH = WINDOW_WIDTH - 40
+MESSAGES_PANEL_ALPHA = 100
 
 FRAMES_PER_SECOND = 60
 
@@ -203,8 +207,6 @@ def get_world_objs_intersecting_character(character: Character,
 
     return tuple(intersecting_wobjs)
 
-        
-    
 # Find the requested named spawn point in Tiled and return its world coordinates.
 def get_player_start(tiled_map: pytmx.TiledMap,
                      spawn_name: str) -> tuple[float, float]:
@@ -371,15 +373,16 @@ def main() -> None:
     pygame.display.set_caption("Autumnwood map test")
     clock = pygame.time.Clock()
 
+    # font for messages
+    messages_font = pygame.font.Font(None, 22)
+    current_message: GameMessage | None = None
+
     # Load the initial map and unpack the runtime state used by the game loop.
     tiled_map, map_regions, map_world_objects = load_map(BASE_MAP_PATH)
-
-    print(map_world_objects)
 
     # Convert the map dimensions from tiles into world pixels.
     map_height = tiled_map.height * tiled_map.tileheight
     map_width = tiled_map.width * tiled_map.tilewidth
-
 
     # Create the player-controlled Character using the Elf Mage's
     # animation, alignment, collision, and visible-bound settings.
@@ -412,6 +415,10 @@ def main() -> None:
 
     # debug map features toggle
     show_map_debug_features = False
+
+    # dialog / message Surface
+    messages_panel = pygame.Surface((MESSAGES_PANEL_WIDTH, MESSAGES_PANEL_HEIGHT), pygame.SRCALPHA)
+    messages_panel.fill((0, 0, 0, MESSAGES_PANEL_ALPHA))
 
     running = True
 
@@ -450,7 +457,8 @@ def main() -> None:
                             for wobj in intersecting_world_objects:
 
                                 if isinstance(wobj, AppleTree):
-                                    print(f"You touched an apple tree. If it has a name, it's {wobj.name}")
+                                    current_message = GameMessage("You interacted with an Apple Tree!",
+                                                                  GameMessageDismissPolicy.ON_MOVE)
 
         # Clear the previous frame before drawing the map again.
         screen.fill("black")
@@ -535,10 +543,16 @@ def main() -> None:
         camera_screen_offset_x = round(-camera_x)
         camera_screen_offset_y = round(-camera_y)
 
-        # Choose the animation state from this frame's movement input.
+        # perform actions based on player trying to move or not moving at all
+            # Choose the animation state from this frame's movement input.
+            # Clear ON_MOVE current_messages (if there is one)
         if move_attempt_x or move_attempt_y:
             player.set_animation_state(AnimationState.WALKING)
+
+            if current_message and current_message.dismiss_policy == GameMessageDismissPolicy.ON_MOVE:
+                current_message = None
         else:
+
             player.set_animation_state(AnimationState.IDLE)
 
         # Draw each visible tile layer from bottom to top.
@@ -560,6 +574,15 @@ def main() -> None:
         player_screen_x = round(player.world_x - camera_x)
         player_screen_y = round(player.world_y - camera_y)
         screen.blit(player.sprite, (player_screen_x, player_screen_y))
+
+        # process and display game messages (anything in messages panel)
+        if current_message:
+            # clear any previous messages in the panel
+            messages_panel.fill((0, 0, 0, MESSAGES_PANEL_ALPHA))
+
+            message_surface = messages_font.render(current_message.text, True, "grey87")
+            messages_panel.blit(message_surface, (20,20)) 
+            screen.blit(messages_panel, (20, WINDOW_HEIGHT - MESSAGES_PANEL_HEIGHT))
 
         # Draw optional region and collision debug overlays on top of the completed scene.
         if show_map_debug_features:
