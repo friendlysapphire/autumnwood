@@ -1,10 +1,11 @@
 from collections.abc import Sequence
 from enum import StrEnum
-from modifiers import SpeedModifier
 from pathlib import Path
 from typing import Literal
 
 import pygame
+
+from modifiers import SpeedModifier
 
 type DirectionValue = Literal[-1, 0, 1]
 

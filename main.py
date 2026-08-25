@@ -1,16 +1,16 @@
-from character import Character, AnimationState
 from collections.abc import Sequence
-from messages import GameMessageDismissPolicy, GameMessage
-from modifiers import SpeedModifier
 from pathlib import Path
-from pytmx.util_pygame import load_pygame
-from region import MapTransitionRegion,Region, QuicksandRegion, RegionType
-from region_effects import ActiveRegionEffects, SpeedRegionEffect, MapTransitionRegionEffect
-from world_object import WorldObject, WorldObjectType, AppleTree
 
 import pygame
 import pytmx
+from pytmx.util_pygame import load_pygame
 
+from character import AnimationState, Character
+from messages import GameMessage, GameMessageDismissPolicy
+from modifiers import SpeedModifier
+from region import MapTransitionRegion, QuicksandRegion, Region, RegionType
+from region_effects import ActiveRegionEffects, MapTransitionRegionEffect, SpeedRegionEffect
+from world_object import AppleTree, WorldObject, WorldObjectType
 
 
 WINDOW_WIDTH = 960

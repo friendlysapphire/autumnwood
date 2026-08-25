@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import StrEnum
+
 import pygame
 
 # Define the gameplay meanings used by rectangular regions loaded from Tiled.
