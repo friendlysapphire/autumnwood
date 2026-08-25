@@ -458,7 +458,7 @@ def main() -> None:
 
                                 if isinstance(wobj, AppleTree):
                                     current_message = GameMessage("You interacted with an Apple Tree!",
-                                                                  GameMessageDismissPolicy.ON_MOVE)
+                                                                  GameMessageDismissPolicy.ON_MOVE_ATTEMPT)
 
         # Clear the previous frame before drawing the map again.
         screen.fill("black")
@@ -545,11 +545,11 @@ def main() -> None:
 
         # perform actions based on player trying to move or not moving at all
             # Choose the animation state from this frame's movement input.
-            # Clear ON_MOVE current_messages (if there is one)
+            # Clear ON_MOVE_ATETMPT current_messages (if there is one)
         if move_attempt_x or move_attempt_y:
             player.set_animation_state(AnimationState.WALKING)
 
-            if current_message and current_message.dismiss_policy == GameMessageDismissPolicy.ON_MOVE:
+            if current_message and current_message.dismiss_policy == GameMessageDismissPolicy.ON_MOVE_ATTEMPT:
                 current_message = None
         else:
 
@@ -577,12 +577,24 @@ def main() -> None:
 
         # process and display game messages (anything in messages panel)
         if current_message:
-            # clear any previous messages in the panel
-            messages_panel.fill((0, 0, 0, MESSAGES_PANEL_ALPHA))
 
-            message_surface = messages_font.render(current_message.text, True, "grey87")
-            messages_panel.blit(message_surface, (20,20)) 
-            screen.blit(messages_panel, (20, WINDOW_HEIGHT - MESSAGES_PANEL_HEIGHT))
+            timer_expired = False
+
+            # if current_message is TIMED, count down and maybe expire
+            if current_message.dismiss_policy == GameMessageDismissPolicy.TIMED:
+
+                current_message.remaining_secs -= delta_secs
+                if current_message.remaining_secs <= 0:
+                    current_message = None
+                    timer_expired = True
+
+            if not timer_expired:
+                # clear any previous messages in the panel
+                messages_panel.fill((0, 0, 0, MESSAGES_PANEL_ALPHA))
+
+                message_surface = messages_font.render(current_message.text, True, "grey87")
+                messages_panel.blit(message_surface, (20,20)) 
+                screen.blit(messages_panel, (20, WINDOW_HEIGHT - MESSAGES_PANEL_HEIGHT))
 
         # Draw optional region and collision debug overlays on top of the completed scene.
         if show_map_debug_features:
