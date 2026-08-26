@@ -3,14 +3,13 @@ from pathlib import Path
 
 import pygame
 import pytmx
-from pytmx.util_pygame import load_pygame
 
 from character import AnimationState, Character
 from game_map import GameMap
 from messages import GameMessage, GameMessageDismissPolicy
 from modifiers import SpeedModifier
 from region import RegionType
-from region_effects import  MapTransitionRegionEffect, SpeedRegionEffect
+from region_effects import  MapTransitionRegionEffect, SpeedRegionEffect, get_active_region_effects
 from world_object import AppleTree
 
 
@@ -303,8 +302,9 @@ def main() -> None:
 
 
         # Determine any effects caused by the regions curently occupied
-        region_effects = current_map.get_active_region_effects(player=player)
-        
+        intersecting_regions = current_map.get_regions_intersecting_character(character=player)
+        region_effects = get_active_region_effects(intersecting_regions=intersecting_regions)
+
         # Marshal pre-move effects that modify the upcoming movement.
 
         # the only pre-move effects are speed modifiers for now. pre_move_effects will eventually be 
@@ -330,8 +330,9 @@ def main() -> None:
             speed_modifiers=speed_modifiers
         )
 
-        # Determine any effects caused by the regions occupied after movement resolves.
-        region_effects = current_map.get_active_region_effects(player=player)
+        # Determine any effects caused by the regions curently occupied
+        intersecting_regions = current_map.get_regions_intersecting_character(character=player)
+        region_effects = get_active_region_effects(intersecting_regions=intersecting_regions)
         
         # Process effects triggered by the player's position after movement resolves.
         for effect in region_effects.post_move_effects:
