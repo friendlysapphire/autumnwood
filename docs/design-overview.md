@@ -1,279 +1,357 @@
 # Autumnwood Design Overview
 
-This document summarizes the current code and map-design architecture for Autumnwood. It is intended as a quick reference for remembering what the major pieces are responsible for and how data flows through the game.
+This document summarizes the current code and map-design architecture
+for Autumnwood. It is intended as a quick reference for remembering what
+the major pieces are responsible for and how data flows through the
+game.
 
-A separate guide, `regions_and_region_effects.m`, covers the detailed checklist for adding new regions and region effects.
+A separate guide, `REGIONS_AND_REGION_EFFECTS.md`, covers the detailed
+checklist for adding new regions and region effects.
 
 ## Core design principles
 
-The project currently follows a few simple rules:
-
-- Tiled defines the world layout and metadata.
-- Python converts Tiled data into runtime objects.
-- Visual map art and gameplay metadata are often represented separately.
-- `Character` owns character state and movement math.
-- Regions describe areas of the map.
-- Region effects describe what those areas imply for the player.
-- The main game loop coordinates systems rather than putting every behavior inside `Character`.
-- Prefer small, explicit abstractions over building large generalized systems before they are needed.
+-   Tiled defines world layout, visible map art, and map-authored
+    gameplay metadata.
+-   Python converts Tiled gameplay metadata into runtime objects.
+-   Visual map art and gameplay metadata are often represented
+    separately.
+-   `Character` owns character state, animation, and character-specific
+    movement math.
+-   `GameMap` owns the currently loaded Tiled map and map-derived
+    runtime data.
+-   Regions describe areas of the map.
+-   Region effects describe what those areas imply for gameplay.
+-   World objects represent discrete interactable things authored in
+    Tiled.
+-   The main game loop coordinates systems rather than putting every
+    behavior inside `Character`.
+-   Prefer small, explicit abstractions over building large generalized
+    systems before they are needed.
+-   Prefer readable Python, including comprehensions and generator
+    expressions where they make intent clearer, but not concision for
+    its own sake.
 
 ## Tiled map structure
 
-Current map layers have distinct responsibilities.
-
 ### `Ground`
 
-The base terrain art.
+Base terrain art: grass, sand, water tiles, paths, and similar
+ground-level terrain.
 
-Examples:
+These are primarily visual unless a separate region or collision object
+gives them gameplay meaning.
 
-- grass
-- sand
-- water tiles
-- paths
+### `Scenery`
 
-These are primarily visual unless a separate region or collision object gives them gameplay meaning.
+Complete visible props and environmental scenery such as trees, rocks,
+houses, tents, and decorative structures.
 
-### `Objects on Ground`
+A tree painted here is only map art. Tiled does not automatically treat
+it as a discrete gameplay object. Large props should remain complete
+rather than being manually split between visual layers.
+Player-behind-prop rendering can be handled by the engine later.
 
-Visual scenery placed above the ground.
+### `walls`
 
-Examples:
-
-- trees
-- rocks
-- decorative structures
-
-A tree painted here is only map art. Tiled does not automatically treat it as a discrete gameplay object.
+A lowercase visual layer used by the Epic RPG World Automapping rules.
+The lowercase name is intentional because the Automapping rules target
+that layer.
 
 ### `World Objects`
 
-Discrete gameplay objects that Python should load and reason about.
-
-This layer is new and is the foundation for the object/interaction system.
+Discrete gameplay objects that Python should load and reason about. This
+is the foundation of the object/interaction system.
 
 Example apple tree:
 
-- built-in Tiled Name: `apple_tree_01`
-- custom property: `object_type = apple_tree`
+-   built-in Tiled Name: `apple_tree_01` (the runtime name may be
+    optional)
+-   custom property: `world_object_type = apple_tree`
 
 General convention:
 
-- **Name** identifies one specific object.
-- **Custom properties** describe what kind of object it is or how it behaves.
+-   **Name** identifies one specific object when an individual identity
+    is useful.
+-   **Custom properties** describe what kind of object it is or how it
+    behaves.
 
-The visible art can remain on `Objects on Ground`; the `World Objects` layer provides the invisible gameplay representation.
+The visible tree art can remain on `Scenery`; the `World Objects` layer
+provides the invisible gameplay representation used by Python.
 
 ### `Spawns`
 
-Named locations where characters can be placed.
+Named locations where characters can be placed, such as `player_start`,
+entrances, and return points for map transitions.
 
-Examples:
-
-- `player_start`
-- `entrance`
-- return points for map transitions
-
-Map transitions refer to destination spawn names rather than hard-coded coordinates.
+Map transitions refer to destination spawn names rather than hard-coded
+coordinates.
 
 ### `Regions`
 
-Rectangular gameplay areas with explicit meaning.
+Rectangular gameplay areas with explicit meaning. Every object on this
+layer requires a `region_type` custom property.
 
-Every object on this layer requires a `region_type` custom property.
-
-Examples:
-
-- `map_transition`
-- `quicksand`
-- navigable water
-
-Some region types use the base `Region` class; others use subclasses when they need extra runtime data.
+Examples include `map_transition`, `quicksand`, and navigable water.
+Some region types use the base `Region` class; others use subclasses
+when they need extra runtime data.
 
 See `REGIONS_AND_REGION_EFFECTS.md` for the full region workflow.
 
 ### `Collisions`
 
-Plain impassable map areas.
+Plain impassable map areas. Objects on this layer are automatically
+loaded as `RegionType.SOLID`.
 
-Objects on this layer are automatically loaded as `RegionType.SOLID`.
+They intentionally require no `region_type` metadata. This keeps
+ordinary collision authoring cheap because maps may contain many
+collision rectangles.
 
-They intentionally require no `region_type` metadata. This keeps ordinary collision authoring cheap because maps may contain many collision rectangles.
+## `GameMap`
+
+`GameMap` is the runtime representation of one loaded Tiled map.
+
+Constructing a `GameMap` from a `.tmx` path currently:
+
+-   loads the Tiled map and referenced tile images
+-   converts Tiled gameplay metadata into runtime regions and world
+    objects
+-   calculates the map's pixel width and height
+
+Important public state currently includes:
+
+-   `tiled_map`
+-   `regions`
+-   `world_objects`
+-   `width`
+-   `height`
+
+### Map queries
+
+`GameMap` owns queries that depend directly on the contents of a
+particular map.
+
+Current examples:
+
+-   `get_spawn_coords()`
+-   `get_regions_intersecting_character()`
+-   `get_world_objs_intersecting_character()`
+
+This is an important refactoring boundary: `GameMap` answers questions
+about the map, but does not need to interpret every gameplay consequence
+of the answer.
+
+``` text
+GameMap:
+Which regions intersect this character?
+
+region_effects:
+What effects do these intersecting regions produce?
+
+main:
+When and how should those effects be applied?
+```
+
+This separation also avoids circular dependencies between `game_map.py`
+and `region_effects.py`.
+
+### Internal Tiled conversion
+
+`GameMap._load_map_regions_and_world_objects()` converts Tiled object
+layers into Python runtime objects.
+
+``` text
+Collisions object
+-> Region(type=SOLID)
+
+Regions / map_transition
+-> MapTransitionRegion
+
+Regions / quicksand
+-> QuicksandRegion
+
+World Objects / apple_tree
+-> AppleTree
+```
+
+The leading underscore marks this loader as an internal implementation
+detail of `GameMap`.
 
 ## Character
 
-`Character` represents a character's own runtime state and movement/animation behavior.
+`Character` represents a character's own runtime state and
+movement/animation behavior.
 
 Current responsibilities include:
 
-- name
-- sprite sheet and animation frames
-- world position
-- movement direction
-- character-owned speed
-- spawn offsets
-- collision rectangle configuration
-- visible sprite bounds
-- animation state and animation timing
-- calculating proposed movement
-- checking map bounds
+-   name
+-   sprite sheet and animation frames
+-   world position
+-   movement direction
+-   character-owned speed
+-   spawn offsets
+-   collision rectangle configuration
+-   visible sprite bounds
+-   animation state and animation timing
+-   calculating proposed movement
+-   checking map bounds
 
 ### Position and spawning
 
-A `Character` is constructed before it exists in the world.
+A `Character` is constructed before it exists in the world. `spawn()`
+places it at a map spawn location and establishes its world coordinates.
 
-`spawn()` places it at a named map location and establishes its world coordinates.
-
-Position-dependent methods should not be used before the character has been spawned.
+Position-dependent methods should not be used before the character has
+been spawned.
 
 ### Collision rectangle
 
-Character collision uses a small rectangle around the character's feet rather than the full sprite.
+Character collision uses a small rectangle around the character's feet
+rather than the full sprite.
 
-`get_collision_rect()` can return the current collision rectangle or calculate one at a proposed position without actually moving the character.
+`get_collision_rect()` can return the current collision rectangle or
+calculate one at a proposed position without actually moving the
+character.
 
 ### Movement speed
 
 The character remains the source of truth for its normal/current speed.
+Temporary environmental effects such as quicksand do **not** overwrite
+that stored speed.
 
-Temporary environmental effects such as quicksand do **not** overwrite that stored speed.
+`get_proposed_new_position()` accepts speed modifiers and calculates a
+temporary effective speed for that movement only.
 
-`get_proposed_new_position()` accepts speed modifiers and calculates a temporary effective speed for that movement only.
-
-This leaves room for future persistent speed influences such as:
-
-- equipment
-- buffs/debuffs
-- injuries
-- mounts
-- abilities
+This leaves room for future persistent speed influences such as
+equipment, buffs/debuffs, injuries, mounts, and abilities.
 
 ## `SpeedModifier`
 
 `SpeedModifier` is a `Protocol`.
 
-Its current interface is simply:
-
-```python
+``` python
 class SpeedModifier(Protocol):
     percent_change: float
 ```
 
-Anything exposing a compatible `percent_change` attribute can be used as a speed modifier without explicitly inheriting from `SpeedModifier`.
+Anything exposing a compatible `percent_change` attribute can be used as
+a speed modifier without explicitly inheriting from `SpeedModifier`.
 
-This lets unrelated systems contribute speed changes without forcing them into one inheritance hierarchy.
+This lets unrelated systems contribute speed changes without forcing
+them into one inheritance hierarchy. Examples could eventually include
+`SpeedRegionEffect`, equipment modifiers, status modifiers, and mount
+modifiers.
 
-Examples could eventually include:
-
-- `SpeedRegionEffect`
-- equipment modifiers
-- status modifiers
-- mount modifiers
-
-Multiple percentage modifiers are currently combined additively, then applied to the character's stored speed for the current movement calculation.
+Multiple percentage modifiers are currently combined additively, then
+applied to the character's stored speed for the current movement
+calculation.
 
 ## Regions
 
-`Region` is the base runtime representation of a rectangular gameplay area.
+`Region` is the base runtime representation of a rectangular gameplay
+area. It contains `rect` and `type`.
 
-It contains:
-
-- `rect`
-- `type`
-
-`RegionType` is a `StrEnum` whose string values match the values authored in Tiled.
+`RegionType` is a `StrEnum` whose string values match values authored in
+Tiled.
 
 Current region types include:
 
-- `SOLID`
-- `NAVIGABLE_DEEP_WATER`
-- `NAVIGABLE_SHALLOW_WATER`
-- `MAP_TRANSITION`
-- `QUICKSAND`
+-   `SOLID`
+-   `NAVIGABLE_DEEP_WATER`
+-   `NAVIGABLE_SHALLOW_WATER`
+-   `MAP_TRANSITION`
+-   `QUICKSAND`
 
 ### Specialized region subclasses
 
-A specialized subclass is used only when that region needs additional runtime data.
+A specialized subclass is used only when that region needs additional
+runtime data.
 
 #### `MapTransitionRegion`
 
-Adds:
-
-- `destination_map`
-- `destination_spawn`
-
-Its type is fixed automatically to `RegionType.MAP_TRANSITION`.
+Adds `destination_map` and `destination_spawn`. Its type is fixed
+automatically to `RegionType.MAP_TRANSITION`.
 
 #### `QuicksandRegion`
 
-Adds:
+Adds `percent_change`. Its type is fixed automatically to
+`RegionType.QUICKSAND`.
 
-- `percent_change`
-
-Its type is fixed automatically to `RegionType.QUICKSAND`.
-
-A region type that requires no additional runtime data can remain a plain `Region`.
+A region type that requires no additional runtime data can remain a
+plain `Region`.
 
 ## Region effects
 
-A `Region` describes an area. A `RegionEffect` describes an effect produced by occupying that area.
-
-The effect system is intentionally separate from the region classes themselves.
-
-Current base class:
-
-```python
-RegionEffect
-```
+A `Region` describes an area. A `RegionEffect` describes an effect
+produced by occupying that area.
 
 Current concrete effects:
 
-- `MapTransitionRegionEffect`
-- `SpeedRegionEffect`
+-   `MapTransitionRegionEffect`
+-   `SpeedRegionEffect`
 
 `ActiveRegionEffects` collects discovered effects into:
 
-- `pre_move_effects`
-- `post_move_effects`
+-   `pre_move_effects`
+-   `post_move_effects`
+
+### `get_active_region_effects()`
+
+`get_active_region_effects()` is now a plain function rather than a
+`GameMap` method.
+
+Its responsibility is:
+
+``` text
+intersecting regions
+-> gameplay effects implied by those regions
+```
+
+Conceptually:
+
+``` python
+def get_active_region_effects(
+    intersecting_regions: Sequence[Region],
+) -> ActiveRegionEffects:
+```
+
+It deliberately does not receive a `GameMap` or a `Character`. The
+caller first asks the map which regions intersect the character, then
+passes those regions into the effect function.
+
+This keeps the dependency boundary clean and prevents `game_map.py` and
+`region_effects.py` from importing each other.
 
 ### Pre-move effects
 
-These affect the upcoming movement.
-
-Current example:
-
-- quicksand produces a `SpeedRegionEffect`
+These affect the upcoming movement. Current example: quicksand produces
+a `SpeedRegionEffect`.
 
 ### Post-move effects
 
-These react to the player's location after movement resolves.
+These react to the player's location after movement resolves. Current
+example: map transition produces a `MapTransitionRegionEffect`.
 
-Current example:
-
-- map transition produces a `MapTransitionRegionEffect`
-
-The game currently does not explicitly model `ON_ENTER` or `ON_EXIT` region events. Add that only when a real gameplay feature requires it.
+The game currently does not explicitly model `ON_ENTER` or `ON_EXIT`
+region events. Add that only when a real gameplay feature requires it.
 
 ## Region data flow
 
-The general flow is:
-
-```text
+``` text
 Tiled region
--> get_map_regions()
--> Region / specialized Region subclass
--> player intersects region
--> get_region_effects()
+-> GameMap loads Region / specialized Region subclass
+-> GameMap determines which regions intersect the player
+-> get_active_region_effects(intersecting_regions)
 -> ActiveRegionEffects
--> game loop processes pre- or post-move effect
+-> game loop processes pre- or post-move effects
 ```
 
 ### Quicksand example
 
-```text
+``` text
 Tiled: region_type = quicksand
 -> QuicksandRegion(percent_change=-0.50)
--> player currently intersects quicksand
+-> GameMap reports that player intersects quicksand
+-> get_active_region_effects()
 -> SpeedRegionEffect(percent_change=-0.50)
 -> pre_move_effects
 -> passed as a SpeedModifier
@@ -281,77 +359,178 @@ Tiled: region_type = quicksand
 -> movement occurs at reduced speed
 ```
 
-Leaving quicksand requires no cleanup because the player's stored speed was never changed.
+Leaving quicksand requires no cleanup because the player's stored speed
+was never changed.
 
 ### Map transition example
 
-```text
+``` text
 Tiled map-transition region
 -> MapTransitionRegion
--> player enters region
+-> player intersects region after movement
+-> get_active_region_effects()
 -> MapTransitionRegionEffect
 -> post_move_effects
--> main loop loads destination map
+-> main loop constructs destination GameMap
 -> destination spawn is looked up by name
 -> existing player is spawned there
 ```
 
 Round-trip transitions between maps are working.
 
-## Map loading
+## World objects and interaction
 
-`load_map_and_regions()` currently loads the map-dependent runtime state:
+`WorldObject` is the runtime foundation for discrete interactable things
+in the world.
 
-- `tiled_map`
-- `map_regions`
-- `map_height`
-- `map_width`
+Current first concrete object:
 
-The main loop owns the active versions of those values.
+-   `AppleTree`
 
-A map transition replaces that active map state and then respawns the existing player at the requested named spawn.
+`WorldObjectType` identifies the type authored in Tiled.
 
-Map names stored in Tiled are logical names such as:
+Current interaction flow:
 
-```text
-special_forest
+``` text
+Tiled World Objects object
+-> GameMap loads WorldObject / AppleTree
+-> player presses E
+-> GameMap finds world objects intersecting the player's collision rectangle
+-> main loop dispatches based on runtime object type
+-> interaction creates a GameMessage
 ```
 
-Python resolves those to `.tmx` files under the maps/resources path.
+The current apple-tree interaction is intentionally simple. It proves
+that Tiled-authored world objects can become runtime objects and
+participate in player interaction.
+
+### Current interaction range
+
+Interaction currently uses overlap between the player's collision
+rectangle and the world object's rectangle.
+
+This is sufficient for the first milestone. A later interaction system
+may use facing direction, a small interaction rectangle, or
+nearby-object selection rather than literal collision overlap.
+
+### Large prop rendering note
+
+A large apple-tree sprite currently looks somewhat odd when the player
+walks upward into its leaves because only the base is blocked by
+collision while the complete tree is rendered as scenery.
+
+This is a known presentation issue, not a reason to enlarge the
+collision box. The likely later solution is Y/depth-aware rendering so
+the player can appear behind the upper portion of large props while
+still colliding only with their base.
+
+## Game messages
+
+The game now has a basic on-screen message system.
+
+A `GameMessage` stores:
+
+-   `text`
+-   `dismiss_policy`
+-   optional `timeout_secs`
+-   runtime `remaining_secs`
+
+Current dismissal policies:
+
+-   `ON_MOVE_ATTEMPT`
+-   `TIMED`
+
+### `ON_MOVE_ATTEMPT`
+
+The message remains visible until the player attempts movement.
+
+The policy is deliberately named `ON_MOVE_ATTEMPT`, rather than
+`ON_MOVE`, because the message should disappear when the player tries to
+move even if collision prevents an actual position change.
+
+### `TIMED`
+
+The message remains visible for a configured number of seconds.
+
+If a timed message receives no valid positive timeout, it currently uses
+a default timeout of 3 seconds. `remaining_secs` is initialized from
+`timeout_secs` and decremented using frame `delta_secs`.
+
+### Message rendering
+
+The current implementation uses:
+
+-   a `pygame.Surface` created with `pygame.SRCALPHA`
+-   a semi-transparent black panel
+-   rendered font text blitted onto that panel
+-   the panel blitted near the bottom of the game window
+
+The panel is only drawn when a current message exists.
+
+The current Pygame default font is temporary. Autumnwood should
+eventually ship its own suitable game font rather than depend on fonts
+installed on the player's system.
+
+The message system is deliberately small. NPC dialogue will likely
+require additional dismissal/advance behavior rather than forcing all
+messages into one policy.
+
+## Map loading and transitions
+
+The old collection of separate active-map variables has been
+consolidated into `GameMap`.
+
+The main loop now owns:
+
+``` text
+current_map: GameMap
+```
+
+A map transition replaces it with a destination `GameMap`. The existing
+player object is then respawned at the requested named spawn in the new
+map.
+
+Map names stored in Tiled are logical names such as `special_forest`;
+Python resolves them to `.tmx` files under the maps/resources path.
 
 ## Movement and collision flow
 
 The current frame flow is approximately:
 
-```text
-1. Read input and set player direction.
-2. Determine region effects at the player's current position.
-3. Process pre-move effects and derive movement inputs such as SpeedModifiers.
-4. Calculate and validate proposed movement.
-5. Move the player.
-6. Determine region effects at the new position.
-7. Process post-move effects such as map transitions.
-8. Calculate camera position.
-9. Update animation.
-10. Draw map, character, and optional debug overlays.
+``` text
+1. Read discrete Pygame events such as quit, debug toggle, and E interaction.
+2. Read held movement keys and set player direction / movement-attempt flags.
+3. Ask GameMap which regions intersect the player's current position.
+4. Translate those regions into active region effects.
+5. Collect pre-move effects such as SpeedModifiers.
+6. Calculate and validate proposed movement.
+7. Move the player when the proposed position is valid.
+8. Ask GameMap which regions intersect the new player position.
+9. Translate those regions into active region effects again.
+10. Process post-move effects such as map transitions.
+11. Calculate camera position.
+12. Select/update player animation.
+13. Apply message-dismissal behavior tied to movement attempts.
+14. Draw map and character.
+15. Update/draw any active game message.
+16. Draw optional debug overlays.
+17. Flip the completed frame to the display.
 ```
 
 ### Movement validation
 
-`is_proposed_player_move_valid()` checks:
+`is_proposed_player_move_valid()` checks map bounds and intersections
+with regions that are not walkable by default.
 
-- map bounds
-- intersections with regions that are not walkable by default
+The current rule is intentionally based on
+`Region.is_walkable_by_default()`.
 
-The current rule is intentionally based on `Region.is_walkable_by_default()`.
+Later this will need to become more contextual for cases such as locked
+door + key, deep water + boat, and other conditionally passable terrain
+or objects.
 
-Later this will need to become more contextual for cases such as:
-
-- locked door + key
-- deep water + boat
-- other conditionally passable terrain or objects
-
-That contextual traversal system has been deliberately deferred until a real gameplay feature requires it.
+That contextual traversal system is deliberately deferred until a real
+gameplay feature requires it.
 
 ## Camera
 
@@ -359,28 +538,27 @@ The camera stores the world coordinate shown at the screen's top-left.
 
 After player movement:
 
-- calculate the camera position that would center the player
-- clamp it to the map bounds
-- subtract the camera position from world coordinates when drawing
+-   calculate the camera position that would center the player
+-   clamp it to the current `GameMap` bounds
+-   subtract the camera position from world coordinates when drawing
 
-Debug rectangles are shifted into screen coordinates with the same camera offset.
+Debug rectangles are shifted into screen coordinates with the same
+camera offset.
+
+Camera behavior is still plain logic around the main loop. A dedicated
+`Camera` object remains a reasonable later refactor once its
+responsibilities are clearer.
 
 ## Animation
 
 `AnimationState` is a `StrEnum`.
 
-Current states include values such as:
+Current states include idle, walking, attack preparation, attack, dying,
+and dead.
 
-- idle
-- walking
-- attack preparation
-- attack
-- dying
-- dead
-
-Each character is configured with sprite-sheet rectangles for the animation states it supports.
-
-If a requested animation is unavailable, the character currently falls back to idle.
+Each character is configured with sprite-sheet rectangles for the
+animation states it supports. If a requested animation is unavailable,
+the character currently falls back to idle.
 
 ## Debug overlay
 
@@ -388,51 +566,66 @@ The backquote key toggles map-debug rendering.
 
 The overlay currently shows:
 
-- map region rectangles
-- different colors by region type
-- the player's collision rectangle
+-   map region rectangles
+-   different colors by region type
+-   world-object rectangles
+-   the player's collision rectangle
 
-When a new `RegionType` is added, update the debug-color match so it can be visually verified on the map.
+When a new `RegionType` is added, update the debug-color match so it can
+be visually verified on the map.
 
-## Object / interaction system: current next step
+## Current refactor
 
-The next major system is the world-object foundation.
+The game began with much of its map/runtime logic in `main.py`.
+Refactoring is now happening incrementally rather than as a rewrite.
 
-The first test object is an apple tree.
+The first major extraction is `GameMap`.
 
-Current Tiled setup:
+The guiding question is not simply "how can `main.py` become shorter?"
+It is:
 
-```text
-Visible art:
-    Objects on Ground layer
+> Which object or module has enough information and responsibility to
+> own this behavior?
 
-Gameplay representation:
-    World Objects layer
-    Name = apple_tree_01
-    object_type = apple_tree
+Current direction:
+
+``` text
+GameMap
+    loaded map data
+    dimensions
+    regions
+    world objects
+    spawn lookup
+    map-specific intersection queries
+
+region_effects.py
+    translate intersecting regions into effects
+
+Character
+    character-owned state and movement/animation calculations
+
+main.py
+    game-loop orchestration
+    input
+    sequencing systems
+    applying effects
+    map replacement
+    drawing (for now)
 ```
 
-The intended first milestone is deliberately small:
-
-```text
-Tiled World Object
--> Python runtime WorldObject
--> player gets close enough
--> player presses interaction key
--> game identifies the object
--> simple interaction/message
-```
-
-Do not build inventory, harvesting, respawn, or a generalized item system until the first basic interaction works.
+Likely future extractions include rendering/message presentation and
+eventually a `Camera`, but they should be introduced one responsibility
+at a time rather than by prematurely constructing a large engine
+architecture.
 
 ## Development roadmap
 
-Current broad roadmap:
-
-```text
+``` text
 movement / maps / camera
 -> regions / effects / transitions
 -> object + interaction foundation
+-> basic game-message UI
+-> refactor main into clearer runtime responsibilities
 -> first simple NPC + dialogue
 -> inventory as real interactions require it
 -> health / damage
@@ -445,10 +638,32 @@ movement / maps / camera
 
 Important roadmap notes:
 
-- Quicksand is working.
-- Map transitions work in both directions.
-- A fade-to-black / fade-in map transition effect is planned, but is not urgent.
-- NPC/dialogue should arrive relatively early after the object/interaction foundation so the project begins to feel like a game rather than only an environmental engine.
-- Do not build the final large overworld yet.
-- Near the content phase, prototype overworld scale with crude maps and actual travel time before committing to final dimensions.
-- The target feeling is a substantial exploratory world in the tradition of older Ultima-style RPGs, not necessarily a compact modern indie map.
+-   Quicksand is working.
+-   Map transitions work in both directions.
+-   `GameMap` now encapsulates loaded map state and map-specific
+    queries.
+-   The first `WorldObject` (`AppleTree`) loads from Tiled and can be
+    interacted with using E.
+-   A basic on-screen `GameMessage` pipeline works, including
+    `ON_MOVE_ATTEMPT` and `TIMED` dismissal policies.
+-   The main-loop refactor is currently in progress.
+-   A fade-to-black / fade-in map transition effect is planned, but is
+    not urgent.
+-   Y/depth-aware rendering for large props such as trees is a known
+    later presentation task.
+-   Window resizing and resolution handling are not implemented yet; the
+    current window is fixed-size.
+-   The game should eventually ship its own font rather than depend on
+    system fonts.
+-   NPC/dialogue should arrive relatively early after the current
+    refactor so the project begins to feel like a game rather than only
+    an environmental engine.
+-   Do not build inventory, harvesting, respawn, or a generalized item
+    system merely because the apple tree exists; add those when an
+    actual interaction requires them.
+-   Do not build the final large overworld yet.
+-   Near the content phase, prototype overworld scale with crude maps
+    and actual travel time before committing to final dimensions.
+-   The target feeling is a substantial exploratory world in the
+    tradition of older Ultima-style RPGs, not necessarily a compact
+    modern indie map.
