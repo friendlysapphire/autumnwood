@@ -6,11 +6,12 @@ import pytmx
 from pytmx.util_pygame import load_pygame
 
 from character import AnimationState, Character
+from game_map import GameMap
 from messages import GameMessage, GameMessageDismissPolicy
 from modifiers import SpeedModifier
-from region import MapTransitionRegion, QuicksandRegion, Region, RegionType
-from region_effects import ActiveRegionEffects, MapTransitionRegionEffect, SpeedRegionEffect
-from world_object import AppleTree, WorldObject, WorldObjectType
+from region import RegionType
+from region_effects import  MapTransitionRegionEffect, SpeedRegionEffect
+from world_object import AppleTree
 
 
 WINDOW_WIDTH = 960
@@ -69,14 +70,11 @@ ELF_MAGE_FILE_PATH = (
 
 BEGIN_GAME_SPAWN_NAME = "player_start"
 
-QUICKSAND_PERCENT_CHANGE = -0.50
-
 # Recalculate the camera after movement so it follows the player's current world position.
 def get_clamped_camera_position(*,
                                 character_world_x: float,
-                                character_world_y: float, 
-                                map_width: int,
-                                map_height: int,
+                                character_world_y: float,
+                                current_map: GameMap,
                                 window_width: int,
                                 window_height: int
                                 ) -> tuple[float, float]:
@@ -89,8 +87,8 @@ def get_clamped_camera_position(*,
 
     # Find the farthest valid camera position on each axis.
     # Keeping these values nonnegative also handles maps smaller than the window.
-    max_camera_x = max(0, map_width - window_width)
-    max_camera_y = max(0, map_height - window_height)
+    max_camera_x = max(0, current_map.width - window_width)
+    max_camera_y = max(0, current_map.height - window_height)
 
     # Clamp each camera coordinate between zero and its maximum valid position.
     camera_x_with_min = max(0, unclamped_camera_x)
@@ -101,152 +99,6 @@ def get_clamped_camera_position(*,
 
     return camera_x, camera_y
 
-# Load gameplay regions & world objects from Tiled.
-# Collision-layer objects are always SOLID; Regions-layer objects define their type explicitly.
-# called as helper by load_map() (you probably don't need to call directly)
-def load_map_regions_and_world_objects(tiled_map: pytmx.TiledMap) -> tuple[tuple[Region, ...], tuple[WorldObject, ...]]:
-
-    region_list: list[Region] = []
-    world_obj_list: list[WorldObject] = []
-
-    for layer in tiled_map.layers:
-        if isinstance(layer, pytmx.TiledObjectGroup):
-            #todo switch to match here
-            if layer.name == "Collisions":
-                for obj in layer:
-                    crect: pygame.Rect = pygame.Rect(obj.x, 
-                                                     obj.y, 
-                                                     obj.width, 
-                                                     obj.height)
-                    
-                    region_list.append(Region(rect=crect, type=RegionType.SOLID))
-
-            if layer.name == "World Objects":
-                for obj in layer:
-                    world_obj_rect = pygame.Rect(obj.x,
-                                              obj.y,
-                                              obj.width,
-                                              obj.height)
-                    
-                    obj_type = obj.properties.get("world_object_type")
-
-                    if obj_type == WorldObjectType.APPLE_TREE:
-                        world_obj = AppleTree(rect=world_obj_rect,
-                                              name=obj.name)
-
-                        world_obj_list.append(world_obj)
-                    else:
-                        raise KeyError(
-                            f"World Object at ({obj.x}, {obj.y}) needs a recognized "
-                            f"world_object_type: {obj.properties}"
-                        )
-
-            if layer.name == "Regions":
-                for obj in layer:
-                    region_rect = pygame.Rect(obj.x,
-                                              obj.y,
-                                              obj.width,
-                                              obj.height)
-
-                    r_type = obj.properties.get("region_type")
-
-                    if r_type == RegionType.MAP_TRANSITION:
-
-                        try:
-                            r_dest_map = obj.properties["destination_map"]
-                            r_dest_spawn = obj.properties["destination_spawn"]
-                        except KeyError as e:
-                            raise KeyError(
-                                f"MapTransition object missing destination_map or "
-                                f"destination_spawn at ({obj.x}, {obj.y}): {obj.properties}"
-                                ) from e
-
-                        region_list.append(MapTransitionRegion(rect=region_rect,
-                                                               destination_map=r_dest_map,
-                                                               destination_spawn=r_dest_spawn)) 
-                    elif r_type == RegionType.QUICKSAND:
-                        region_list.append(QuicksandRegion(rect=region_rect,
-                                                           percent_change=QUICKSAND_PERCENT_CHANGE))  
-                    # Region types that need no additional runtime data can use the base Region class.
-                    elif r_type:
-                        region_list.append(Region(rect=region_rect, type=RegionType(r_type)))
-                    else:
-                        raise KeyError(
-                            f"All objects in Regions layer need region_type: {obj.x}: {obj.y} : {obj.properties}")
-
-                        
-    return tuple(region_list), tuple(world_obj_list)
-
-# Return every gameplay region currently intersecting the player's collision rectangle.
-def get_regions_intersecting_character(character: Character,
-                                       map_regions: Sequence[Region]
-                                       ) -> tuple[Region, ...]:
-
-    char_collision_rect = character.get_collision_rect()
-
-    intersecting_regions = (
-        region
-        for region in map_regions
-        if char_collision_rect.colliderect(region.rect)
-        )
-  
-    return tuple(intersecting_regions)
-
-# return every world object intersecting with the character's current position
-def get_world_objs_intersecting_character(character: Character,
-                                          world_objs: Sequence[WorldObject]
-                                          ) -> tuple[WorldObject, ...]:
-    
-    char_collision_rect = character.get_collision_rect()
-
-    intersecting_wobjs = (
-        wobj
-        for wobj in world_objs
-        if char_collision_rect.colliderect(wobj.rect)
-        )
-
-    return tuple(intersecting_wobjs)
-
-# Find the requested named spawn point in Tiled and return its world coordinates.
-def get_player_start(tiled_map: pytmx.TiledMap,
-                     spawn_name: str) -> tuple[float, float]:
-
-    for layer in tiled_map.layers:
-        if isinstance(layer, pytmx.TiledObjectGroup):
-            if layer.name == "Spawns":
-                for obj in layer:
-                    if obj.name == spawn_name:
-                        return (obj.x, obj.y)
-
-    raise ValueError(f"Could not find player spawn location {spawn_name} for {tiled_map.filename}.")
-
-# Determine the gameplay effects implied by the regions the player currently occupies.
-# This only describes effects; the main loop is responsible for applying them.
-# does not perform generic collision detection in connection with checking for a valid proposed move.
-def get_region_effects(player: Character,
-                         map_regions: Sequence[Region]
-                         ) -> ActiveRegionEffects:
-
-    
-    # Gather the regions occupied at the player's current position.
-    intersecting_regions = get_regions_intersecting_character(character=player,
-                                                              map_regions=map_regions)
-
-    region_effects = ActiveRegionEffects()
-
-    for region in intersecting_regions:
-
-        if isinstance(region, MapTransitionRegion):
-
-            effect = MapTransitionRegionEffect(destination_map=region.destination_map,
-                                               destination_spawn=region.destination_spawn)
-            region_effects.post_move_effects.append(effect)
-
-        elif (isinstance(region,QuicksandRegion)):
-            effect = SpeedRegionEffect(percent_change=region.percent_change)
-            region_effects.pre_move_effects.append(effect)
-
-    return region_effects
 
 # A proposed position is valid only if the character stays within the map
 # and does not overlap a region that blocks movement.
@@ -255,22 +107,20 @@ def is_proposed_player_move_valid(
         proposed_x: float,
         proposed_y: float,
         char: Character,
-        map_regions: Sequence[Region],
-        map_width: int,
-        map_height: int,
+        current_map: GameMap
         ) -> bool:
 
     in_bounds = char.is_within_bounds(
         proposed_x,
         proposed_y,
-        x_size=map_width,
-        y_size=map_height,
+        x_size=current_map.width,
+        y_size=current_map.height,
     )
 
     player_collision_rect = char.get_collision_rect(proposed_x, proposed_y)
 
     # Check the proposed player collision box against regions that are not walkable by default.
-    for region in map_regions:
+    for region in current_map.regions:
 
         if not region.is_walkable_by_default():
             if player_collision_rect.colliderect(region.rect):
@@ -286,9 +136,7 @@ def update_player_position(
     move_attempt_y: bool,
     player: Character,
     delta_secs: float,
-    map_width: int,
-    map_height: int,
-    map_regions: Sequence[Region],
+    current_map: GameMap,
     speed_modifiers: Sequence[SpeedModifier]
 ) -> None:
 
@@ -305,9 +153,7 @@ def update_player_position(
             proposed_x=proposed_x,
             proposed_y=proposed_y,
             char=player,
-            map_regions=map_regions,
-            map_width=map_width,
-            map_height=map_height,
+            current_map=current_map
         ):
             player.world_x = proposed_x
             player.world_y = proposed_y
@@ -316,9 +162,7 @@ def update_player_position(
             proposed_x=proposed_x,
             proposed_y=player.world_y,
             char=player,
-            map_regions=map_regions,
-            map_width=map_width,
-            map_height=map_height,
+            current_map=current_map
         ):
             player.world_x = proposed_x
 
@@ -326,9 +170,7 @@ def update_player_position(
             proposed_x=player.world_x,
             proposed_y=proposed_y,
             char=player,
-            map_regions=map_regions,
-            map_width=map_width,
-            map_height=map_height,
+            current_map=current_map
         ):
             player.world_y = proposed_y
 
@@ -337,9 +179,7 @@ def update_player_position(
             proposed_x=proposed_x,
             proposed_y=proposed_y,
             char=player,
-            map_regions=map_regions,
-            map_width=map_width,
-            map_height=map_height,
+            current_map=current_map
         ):
             player.world_x = proposed_x
 
@@ -348,23 +188,9 @@ def update_player_position(
             proposed_x=proposed_x,
             proposed_y=proposed_y,
             char=player,
-            map_regions=map_regions,
-            map_width=map_width,
-            map_height=map_height,
+            current_map=current_map
         ):
             player.world_y = proposed_y
-
-# Load a Tiled map + its regions + world objects
-def load_map(path: Path) -> tuple[pytmx.TiledMap, tuple[Region, ...], tuple[WorldObject, ...]]:
-
-    # Load the Tiled map and its referenced tile images.
-    tiled_map = load_pygame(path)
-
-    # Load the gameplay regions defined by the map.
-    map_regions, map_world_objects = load_map_regions_and_world_objects(tiled_map)
-
-    return (tiled_map, map_regions, map_world_objects)
-
 
 def main() -> None:
     # Set up Pygame and create the game window.
@@ -378,11 +204,7 @@ def main() -> None:
     current_message: GameMessage | None = None
 
     # Load the initial map and unpack the runtime state used by the game loop.
-    tiled_map, map_regions, map_world_objects = load_map(BASE_MAP_PATH)
-
-    # Convert the map dimensions from tiles into world pixels.
-    map_height = tiled_map.height * tiled_map.tileheight
-    map_width = tiled_map.width * tiled_map.tilewidth
+    current_map = GameMap(BASE_MAP_PATH)
 
     # Create the player-controlled Character using the Elf Mage's
     # animation, alignment, collision, and visible-bound settings.
@@ -404,7 +226,7 @@ def main() -> None:
     )
 
     # get player start location
-    spawn_x, spawn_y = get_player_start(tiled_map, BEGIN_GAME_SPAWN_NAME)
+    spawn_x, spawn_y = current_map.get_spawn_coords(BEGIN_GAME_SPAWN_NAME)
 
     # can't use the Character on the map / in the world until we spawn()
     player.spawn(spawn_x, spawn_y)
@@ -450,8 +272,7 @@ def main() -> None:
 
                         # E examines/interacts with world objects currently overlapping the player.
                         case pygame.K_e:  
-                            intersecting_world_objects= get_world_objs_intersecting_character(character=player,
-                                                                                            world_objs=map_world_objects)
+                            intersecting_world_objects = current_map.get_world_objs_intersecting_character(character=player)
 
                             # process each world object intersecting w/ our player
                             for wobj in intersecting_world_objects:
@@ -482,8 +303,7 @@ def main() -> None:
 
 
         # Determine any effects caused by the regions curently occupied
-        region_effects = get_region_effects(player=player,
-                                            map_regions=map_regions)
+        region_effects = current_map.get_active_region_effects(player=player)
         
         # Marshal pre-move effects that modify the upcoming movement.
 
@@ -506,15 +326,12 @@ def main() -> None:
             move_attempt_y=move_attempt_y,
             player=player,
             delta_secs=delta_secs,
-            map_width=map_width,
-            map_height=map_height,
-            map_regions=map_regions,
+            current_map=current_map,
             speed_modifiers=speed_modifiers
         )
 
         # Determine any effects caused by the regions occupied after movement resolves.
-        region_effects = get_region_effects(player=player,
-                                            map_regions=map_regions)
+        region_effects = current_map.get_active_region_effects(player=player)
         
         # Process effects triggered by the player's position after movement resolves.
         for effect in region_effects.post_move_effects:
@@ -522,21 +339,17 @@ def main() -> None:
             if isinstance(effect, MapTransitionRegionEffect):
                 # Replace the active map, regions, and dimensions with the transition destination.
                 dest_path = MAPS_PATH / f"{effect.destination_map}.tmx"
-                tiled_map, map_regions, map_world_objects  = load_map(dest_path)
-
-                map_height = tiled_map.height * tiled_map.tileheight
-                map_width = tiled_map.width * tiled_map.tilewidth
+                current_map = GameMap(dest_path)
 
                 # Find the destination spawn in the new map and place the existing player there.
-                spawn_x, spawn_y = get_player_start(tiled_map, effect.destination_spawn)
+                spawn_x, spawn_y = current_map.get_spawn_coords(effect.destination_spawn)
 
                 # can't use the Character on the map / in the world until we spawn()
                 player.spawn(spawn_x, spawn_y)
 
         camera_x, camera_y = get_clamped_camera_position(character_world_x=player.world_x,
-                                                         character_world_y=player.world_y, 
-                                                         map_width=map_width,
-                                                         map_height=map_height,
+                                                         character_world_y=player.world_y,
+                                                         current_map=current_map,
                                                          window_width=WINDOW_WIDTH,
                                                          window_height=WINDOW_HEIGHT)
 
@@ -556,11 +369,11 @@ def main() -> None:
             player.set_animation_state(AnimationState.IDLE)
 
         # Draw each visible tile layer from bottom to top.
-        for layer in tiled_map.visible_layers:
+        for layer in current_map.tiled_map.visible_layers:
             if isinstance(layer, pytmx.TiledTileLayer):
                 for tile_x, tile_y, tile_image in layer.tiles():
-                    tile_world_x = tile_x * tiled_map.tilewidth
-                    tile_world_y = tile_y * tiled_map.tileheight
+                    tile_world_x = tile_x * current_map.tiled_map.tilewidth
+                    tile_world_y = tile_y * current_map.tiled_map.tileheight
                     tile_screen_x = round(tile_world_x - camera_x)
                     tile_screen_y = round(tile_world_y - camera_y)
 
@@ -600,7 +413,7 @@ def main() -> None:
         if show_map_debug_features:
            
             # Shift each region rectangle into screen coordinates for debug drawing.
-            for region in map_regions:
+            for region in current_map.regions:
                 region_rect = region.rect
 
                 match region.type:
@@ -620,7 +433,7 @@ def main() -> None:
                 camera_adjusted_rect = region_rect.move(camera_screen_offset_x, camera_screen_offset_y)
                 pygame.draw.rect(screen, debug_rect_color, camera_adjusted_rect, width=2)
 
-            for world_object in map_world_objects:
+            for world_object in current_map.world_objects:
                 world_obj_rect = world_object.rect
                 camera_adjusted_rect = world_obj_rect.move(camera_screen_offset_x, camera_screen_offset_y)
                 pygame.draw.rect(screen, "mediumseagreen", camera_adjusted_rect, width=2)
