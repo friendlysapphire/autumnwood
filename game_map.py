@@ -70,34 +70,6 @@ class GameMap:
 
         return tuple(intersecting_wobjs)
 
-    # Determine the gameplay effects implied by the regions the player currently occupies.
-    # This only describes effects; the main loop is responsible for applying them.
-    # does not perform generic collision detection in connection with checking for a valid proposed move.
-    def get_active_region_effects(self,
-                           player: Character
-                           ) -> ActiveRegionEffects:
-
-        
-        # Gather the regions occupied at the player's current position.
-        intersecting_regions = self.get_regions_intersecting_character(character=player)
-
-        region_effects = ActiveRegionEffects()
-
-        for region in intersecting_regions:
-
-            if isinstance(region, MapTransitionRegion):
-
-                effect = MapTransitionRegionEffect(destination_map=region.destination_map,
-                                                destination_spawn=region.destination_spawn)
-                region_effects.post_move_effects.append(effect)
-
-            elif isinstance(region,QuicksandRegion):
-                effect = SpeedRegionEffect(percent_change=region.percent_change)
-                region_effects.pre_move_effects.append(effect)
-
-        return region_effects
-
-
     # INTERNAL ONLY METHODS
 
     # Load gameplay regions & world objects from Tiled.

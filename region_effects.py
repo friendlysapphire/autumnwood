@@ -30,8 +30,8 @@ class MapTransitionRegionEffect(RegionEffect):
     destination_map: str
     destination_spawn: str
 
-# Determine the gameplay effects implied by the regions the player currently occupies.
-# This only describes effects; the main loop is responsible for applying them.
+# Translate the currently occupied regions into the gameplay effects they produce.
+# This only describes the effects; the caller is responsible for applying them.
 # does not perform generic collision detection in connection with checking for a valid proposed move.
 def get_active_region_effects(intersecting_regions: Sequence[Region]) -> ActiveRegionEffects:
 

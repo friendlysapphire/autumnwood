@@ -42,4 +42,3 @@ class MapTransitionRegion(Region):
 class QuicksandRegion(Region):
     percent_change: float
     type: RegionType = field(init=False, default=RegionType.QUICKSAND)
-
