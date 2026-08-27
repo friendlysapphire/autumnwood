@@ -9,6 +9,7 @@ from character import AnimationState, Character
 from game_map import GameMap
 from messages import GameMessage, GameMessageDismissPolicy
 from modifiers import SpeedModifier
+from movement import update_character_position
 from region import RegionType
 from region_effects import  MapTransitionRegionEffect, SpeedRegionEffect, get_active_region_effects
 from world_object import AppleTree
@@ -69,98 +70,6 @@ ELF_MAGE_FILE_PATH = (
 )
 
 BEGIN_GAME_SPAWN_NAME = "player_start"
-
-# A proposed position is valid only if the character stays within the map
-# and does not overlap a region that blocks movement.
-def is_proposed_player_move_valid(
-        *,
-        proposed_x: float,
-        proposed_y: float,
-        char: Character,
-        current_map: GameMap
-        ) -> bool:
-
-    in_bounds = char.is_within_bounds(
-        proposed_x,
-        proposed_y,
-        x_size=current_map.width,
-        y_size=current_map.height,
-    )
-
-    player_collision_rect = char.get_collision_rect(proposed_x, proposed_y)
-
-    # Check the proposed player collision box against regions that are not walkable by default.
-    for region in current_map.regions:
-
-        if not region.is_walkable_by_default():
-            if player_collision_rect.colliderect(region.rect):
-                return False
-
-    return in_bounds
-
-# Resolve the player's attempted movement after direction has been set.
-# For diagonal movement, try the full move first, then X-only, then Y-only.
-def update_player_position(
-    *,
-    move_attempt_x: bool,
-    move_attempt_y: bool,
-    player: Character,
-    delta_secs: float,
-    current_map: GameMap,
-    speed_modifiers: Sequence[SpeedModifier]
-) -> None:
-
-    # Skip movement calculations when neither axis has input.
-    if not move_attempt_x and not move_attempt_y:
-        return
-
-    # Calculate the position the current direction and frame time would produce.
-    proposed_x, proposed_y = player.get_proposed_new_position(delta_secs, speed_modifiers)
-
-    # Try diagonal movement first. If blocked, slide along an available axis.
-    if move_attempt_x and move_attempt_y:
-        if is_proposed_player_move_valid(
-            proposed_x=proposed_x,
-            proposed_y=proposed_y,
-            char=player,
-            current_map=current_map
-        ):
-            player.world_x = proposed_x
-            player.world_y = proposed_y
-
-        elif is_proposed_player_move_valid(
-            proposed_x=proposed_x,
-            proposed_y=player.world_y,
-            char=player,
-            current_map=current_map
-        ):
-            player.world_x = proposed_x
-
-        elif is_proposed_player_move_valid(
-            proposed_x=player.world_x,
-            proposed_y=proposed_y,
-            char=player,
-            current_map=current_map
-        ):
-            player.world_y = proposed_y
-
-    elif move_attempt_x:
-        if is_proposed_player_move_valid(
-            proposed_x=proposed_x,
-            proposed_y=proposed_y,
-            char=player,
-            current_map=current_map
-        ):
-            player.world_x = proposed_x
-
-    elif move_attempt_y:
-        if is_proposed_player_move_valid(
-            proposed_x=proposed_x,
-            proposed_y=proposed_y,
-            char=player,
-            current_map=current_map
-        ):
-            player.world_y = proposed_y
 
 def main() -> None:
     # Set up Pygame and create the game window.
@@ -292,7 +201,7 @@ def main() -> None:
         # TODO: process pre-move effects except for SpeedModifiers (which affect player positioning, below)
 
         # Validate and apply the attempted movement against map bounds and obstacles.
-        update_player_position(
+        update_character_position(
             move_attempt_x=move_attempt_x,
             move_attempt_y=move_attempt_y,
             player=player,
