@@ -7,7 +7,7 @@ The current design separates several ideas:
 - **GameMap**: owns the currently loaded Tiled map and the runtime map data derived from it, including regions and world objects.
 - **Region**: an area on the map with gameplay meaning.
 - **RegionEffect**: one effect implied by occupying a region.
-- **ActiveRegionEffects**: collects the pre-move and post-move effects implied by the regions currently intersecting the player.
+- **ActiveRegionEffects**: groups effects implied by one set of intersecting regions into pre-move and post-move buckets.
 - **Game loop processing**: coordinates intersection queries, effect discovery, and application of those effects.
 
 Ordinary impassable scenery stays on Tiled's **Collisions** layer and requires no custom metadata. Special gameplay areas go on the **Regions** layer.
@@ -90,6 +90,10 @@ Its internal map-loading code currently creates both:
 
 - regions
 - world objects
+
+The current quicksand percentage is a Python-defined shared value rather
+than per-region Tiled metadata. A Tiled quicksand object therefore needs
+only `region_type = quicksand` today.
 
 For a new region type:
 
@@ -334,10 +338,10 @@ Multiple percentage modifiers are currently additive.
 For example:
 
 ```text
-quicksand: -35%
+quicksand: -50%
 boots:     +10%
 ----------------
-total:     -25%
+total:     -40%
 ```
 
 The character calculates:

@@ -20,6 +20,8 @@ class AnimationState(StrEnum):
     DEAD = "dead"
 
 
+# Character owns character-specific state, animation, and movement math.
+# Map collision policy belongs to the movement/world systems instead.
 class Character:
     def __init__(
         self,
@@ -65,7 +67,8 @@ class Character:
         self._collision_box_height = collision_box_height
         self._collision_box_width = collision_box_width
 
-        # speed in pixels per second
+        # default_speed is the character's configured base speed. speed is the persistent
+        # runtime value; temporary effects are supplied only when calculating a move.
         self.default_speed = default_speed
         self.speed = default_speed
 
@@ -169,6 +172,7 @@ class Character:
 
 
         # Calculate the combined percentage change from all active speed modifiers.
+        # Applying both direction components at full speed makes diagonal movement faster.
         aggregate_pct_change = sum(m.percent_change for m in speed_modifiers)
 
         # Apply the temporary modifiers without changing the character's stored speed.
@@ -233,7 +237,6 @@ class Character:
             # Replace the visible sprite with the newly selected animation frame.
             anim_rects = self._sprite_animation_rects[self._current_animation_state]
             self.sprite = self._sprite_sheet.subsurface(anim_rects[self._current_frame_index])
-
 
 
 

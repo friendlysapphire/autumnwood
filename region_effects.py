@@ -1,14 +1,14 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from character import Character
 from region import MapTransitionRegion, QuicksandRegion, Region
 
+# Shared base type lets ActiveRegionEffects group different effect descriptions together.
 @dataclass
 class RegionEffect:
     pass
 
-# Collect the region-derived effects that apply to the player at the current position.
+# Group the region-derived effects that apply at one position by when they are processed.
 @dataclass(kw_only=True)
 class ActiveRegionEffects:
     pre_move_effects: list[RegionEffect] = field(default_factory=list)
@@ -30,9 +30,8 @@ class MapTransitionRegionEffect(RegionEffect):
     destination_map: str
     destination_spawn: str
 
-# Translate the currently occupied regions into the gameplay effects they produce.
-# This only describes the effects; the caller is responsible for applying them.
-# does not perform generic collision detection in connection with checking for a valid proposed move.
+# Translate already-intersecting regions into effect descriptions. This function neither
+# finds intersections nor applies effects, keeping it independent of GameMap and Character.
 def get_active_region_effects(intersecting_regions: Sequence[Region]) -> ActiveRegionEffects:
 
     region_effects = ActiveRegionEffects()

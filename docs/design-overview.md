@@ -5,8 +5,8 @@ for Autumnwood. It is intended as a quick reference for remembering what
 the major pieces are responsible for and how data flows through the
 game.
 
-A separate guide, `REGIONS_AND_REGION_EFFECTS.md`, covers the detailed
-checklist for adding new regions and region effects.
+A separate guide, [Regions and Region Effects](regions-and-region-effects.md),
+covers the detailed checklist for adding new regions and region effects.
 
 ## Core design principles
 
@@ -95,7 +95,8 @@ Examples include `map_transition`, `quicksand`, and navigable water.
 Some region types use the base `Region` class; others use subclasses
 when they need extra runtime data.
 
-See `REGIONS_AND_REGION_EFFECTS.md` for the full region workflow.
+See [Regions and Region Effects](regions-and-region-effects.md) for the full
+region workflow.
 
 ### `Collisions`
 
@@ -193,7 +194,7 @@ Current responsibilities include:
 -   visible sprite bounds
 -   animation state and animation timing
 -   calculating proposed movement
--   checking map bounds
+-   character-specific visible-sprite bounds calculations used by movement
 
 ### Position and spawning
 
@@ -214,9 +215,11 @@ character.
 
 ### Movement speed
 
-The character remains the source of truth for its normal/current speed.
+`default_speed` is the character's configured base speed. `speed` is its
+persistent runtime speed.
+
 Temporary environmental effects such as quicksand do **not** overwrite
-that stored speed.
+either stored value.
 
 `get_proposed_new_position()` accepts speed modifiers and calculates a
 temporary effective speed for that movement only.
@@ -475,6 +478,10 @@ The message system is deliberately small. NPC dialogue will likely
 require additional dismissal/advance behavior rather than forcing all
 messages into one policy.
 
+The next message-subsystem refactor will keep `GameMessage` as message data
+while moving active-message lifecycle state and panel rendering out of the
+game-loop coordinator.
+
 ## Map loading and transitions
 
 The old collection of separate active-map variables has been
@@ -508,10 +515,10 @@ The current frame flow is approximately:
 8. Ask GameMap which regions intersect the new player position.
 9. Translate those regions into active region effects again.
 10. Process post-move effects such as map transitions.
-11. Calculate camera position.
-12. Select/update player animation.
-13. Apply message-dismissal behavior tied to movement attempts.
-14. Draw map and character.
+11. Select the animation state and apply message dismissal tied to movement attempts.
+12. Calculate camera position.
+13. Draw the map.
+14. Advance the player's sprite animation and draw the character.
 15. Update/draw any active game message.
 16. Draw optional debug overlays.
 17. Flip the completed frame to the display.
@@ -545,9 +552,9 @@ After player movement:
 Debug rectangles are shifted into screen coordinates with the same
 camera offset.
 
-Camera behavior is still plain logic around the main loop. A dedicated
-`Camera` object remains a reasonable later refactor once its
-responsibilities are clearer.
+Camera positioning currently lives in the focused `camera.py` function. A
+dedicated `Camera` object remains a possible later refactor only if the
+camera gains enough state or behavior to justify one.
 
 ## Animation
 
@@ -579,7 +586,16 @@ be visually verified on the map.
 The game began with much of its map/runtime logic in `main.py`.
 Refactoring is now happening incrementally rather than as a rewrite.
 
-The first major extraction is `GameMap`.
+Completed extractions so far are:
+
+- `GameMap` for loaded map state and spatial queries
+- `camera.py` for clamped camera-position calculation
+- `movement.py` for world movement validation and collision sliding
+- `map_render.py` for Tiled tile-layer drawing
+- `debug_rendering.py` for optional diagnostic overlays
+
+The current next refactor is the message subsystem: move active-message
+lifecycle and presentation out of `main.py` while keeping the design small.
 
 The guiding question is not simply "how can `main.py` become shorter?"
 It is:
@@ -610,13 +626,11 @@ main.py
     sequencing systems
     applying effects
     map replacement
-    drawing (for now)
+    temporary message lifecycle/presentation
 ```
 
-Likely future extractions include rendering/message presentation and
-eventually a `Camera`, but they should be introduced one responsibility
-at a time rather than by prematurely constructing a large engine
-architecture.
+The remaining message extraction should be introduced as one focused
+responsibility, rather than as part of a premature large-engine architecture.
 
 ## Development roadmap
 

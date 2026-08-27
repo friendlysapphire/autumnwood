@@ -4,7 +4,8 @@ from character import Character
 from game_map import GameMap
 from modifiers import SpeedModifier
 
-# character movement code
+# This module applies world movement policy. Character calculates a proposed position;
+# this module decides whether the current map allows it and resolves collision sliding.
 
 # A proposed position is valid only if the character stays within the map
 # and does not overlap a region that blocks movement.
@@ -54,6 +55,7 @@ def update_character_position(
     proposed_x, proposed_y = player.get_proposed_new_position(delta_secs, speed_modifiers)
 
     # Try diagonal movement first. If blocked, slide along an available axis.
+    # X receives priority when both axis-only moves are valid.
     if move_attempt_x and move_attempt_y:
         if is_proposed_player_move_valid(
             proposed_x=proposed_x,

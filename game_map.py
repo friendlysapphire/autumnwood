@@ -6,12 +6,13 @@ from pytmx.util_pygame import load_pygame
 
 from character import Character
 from region import MapTransitionRegion, QuicksandRegion, Region, RegionType
-from region_effects import ActiveRegionEffects, MapTransitionRegionEffect, SpeedRegionEffect
 from world_object import AppleTree, WorldObject, WorldObjectType
 
 
 QUICKSAND_PERCENT_CHANGE = -0.50
 
+# GameMap turns Tiled's authored map metadata into runtime map objects and answers
+# spatial questions about them. It does not apply the gameplay effects those objects imply.
 class GameMap:
 
     def __init__(self, map_path: Path) -> None:
@@ -55,7 +56,8 @@ class GameMap:
     
         return tuple(intersecting_regions)
 
-    # return every world object intersecting with the character's current position
+    # Return every world object intersecting the character's feet collision rectangle.
+    # WorldObject.rect is an invisible gameplay hitbox, separate from its scenery art.
     def get_world_objs_intersecting_character(self,
                                               character: Character
                                               ) -> tuple[WorldObject, ...]:
@@ -72,8 +74,9 @@ class GameMap:
 
     # INTERNAL ONLY METHODS
 
-    # Load gameplay regions & world objects from Tiled.
-    # Collision-layer objects are always SOLID; Regions-layer objects define their type explicitly.)
+    # Load gameplay regions and world objects from Tiled.
+    # Collisions become ordinary SOLID Regions; special Regions and World Objects become
+    # specialized runtime objects only when their authored data requires it.
     def _load_map_regions_and_world_objects(self) -> tuple[tuple[Region, ...], tuple[WorldObject, ...]]:
 
         region_list: list[Region] = []

@@ -77,11 +77,11 @@ def main() -> None:
     pygame.display.set_caption("Autumnwood map test")
     clock = pygame.time.Clock()
 
-    # font for messages
+    # Temporary message-system state; this will move into the message-display refactor.
     messages_font = pygame.font.Font(None, 22)
     current_message: GameMessage | None = None
 
-    # Load the initial map and unpack the runtime state used by the game loop.
+    # Load the initial map, which owns its runtime regions, world objects, and dimensions.
     current_map = GameMap(BASE_MAP_PATH)
 
     # Create the player-controlled Character using the Elf Mage's
@@ -180,14 +180,13 @@ def main() -> None:
             move_attempt_y = True
 
 
-        # Determine any effects caused by the regions curently occupied
+        # Discover effects from the position occupied before movement. These effects can
+        # modify the upcoming move, such as quicksand changing the effective speed.
         intersecting_regions = current_map.get_regions_intersecting_character(character=player)
         region_effects = get_active_region_effects(intersecting_regions=intersecting_regions)
 
-        # Marshal pre-move effects that modify the upcoming movement.
-
-        # the only pre-move effects are speed modifiers for now. pre_move_effects will eventually be 
-        # non-speed modifiers that need pre-move processing.
+        # Extract the speed modifiers currently needed by movement. Other pre-move effect
+        # types can be processed here when a real gameplay feature introduces them.
 
         #pre_move_effects = []
         speed_modifiers: list[SpeedModifier] = []
@@ -197,7 +196,7 @@ def main() -> None:
                 speed_modifiers.append(effect)
 
 
-        # TODO: process pre-move effects except for SpeedModifiers (which affect player positioning, below)
+        # TODO: process future pre-move effects other than SpeedModifiers, which affect positioning below.
 
         # Validate and apply the attempted movement against map bounds and obstacles.
         update_character_position(
@@ -209,7 +208,8 @@ def main() -> None:
             speed_modifiers=speed_modifiers
         )
 
-        # Determine any effects caused by the regions curently occupied
+        # Rediscover effects from the resolved position. Post-move effects, such as map
+        # transitions, must use this position rather than the one from before movement.
         intersecting_regions = current_map.get_regions_intersecting_character(character=player)
         region_effects = get_active_region_effects(intersecting_regions=intersecting_regions)
         
@@ -217,19 +217,17 @@ def main() -> None:
         for effect in region_effects.post_move_effects:
 
             if isinstance(effect, MapTransitionRegionEffect):
-                # Replace the active map, regions, and dimensions with the transition destination.
+                # Replace the active GameMap, then respawn the existing player at the
+                # named destination spawn in that map.
                 dest_path = MAPS_PATH / f"{effect.destination_map}.tmx"
                 current_map = GameMap(dest_path)
 
-                # Find the destination spawn in the new map and place the existing player there.
                 spawn_x, spawn_y = current_map.get_spawn_coords(effect.destination_spawn)
 
-                # can't use the Character on the map / in the world until we spawn()
                 player.spawn(spawn_x, spawn_y)
 
-        # perform actions based on player trying to move or not moving at all
-            # Choose the animation state from this frame's movement input.
-            # Clear ON_MOVE_ATETMPT current_messages (if there is one)
+        # Animation follows input intent, even when the map blocks the attempted move.
+        # An attempted move also dismisses messages that use that dismissal policy.
         if move_attempt_x or move_attempt_y:
             player.set_animation_state(AnimationState.WALKING)
 
@@ -256,7 +254,8 @@ def main() -> None:
         player_screen_y = round(player.world_y - camera_y)
         screen.blit(player.sprite, (player_screen_x, player_screen_y))
 
-        # process and display game messages (anything in messages panel)
+        # Temporary in-loop message lifecycle and rendering; the message-display refactor
+        # will move this responsibility out of the game-loop coordinator.
         if current_message:
 
             timer_expired = False

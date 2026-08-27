@@ -12,6 +12,8 @@ class RegionType(StrEnum):
     MAP_TRANSITION = "map_transition"
     QUICKSAND = "quicksand"
 
+# A Region is the runtime version of an authored rectangular gameplay area. Subclasses
+# exist only when a region needs additional runtime data beyond its rectangle and type.
 @dataclass(kw_only=True)
 class Region:
     rect: pygame.Rect 

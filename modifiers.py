@@ -1,5 +1,5 @@
-# Player doesn't need to know about RegionEffects classes or other ways it can be asked to modify itself,
-# try to keep Player's input params for modifiers (eg speed) based on protocols
+# Character should not need to know which system supplied a modifier. This Protocol lets
+# regions, equipment, or future systems provide the needed attribute without inheritance.
 
 
 from typing import Protocol 
