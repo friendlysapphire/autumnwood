@@ -190,12 +190,10 @@ def main() -> None:
         # types can be processed here when a real gameplay feature introduces them.
 
         #pre_move_effects = []
-        speed_modifiers: list[SpeedModifier] = []
-        for effect in region_effects.pre_move_effects:
-
-            if isinstance(effect, SpeedRegionEffect):
-                speed_modifiers.append(effect)
-
+        speed_modifiers = [effect
+                           for effect
+                           in region_effects.pre_move_effects
+                           if isinstance(effect, SpeedRegionEffect)]
 
         # TODO: process future pre-move effects other than SpeedModifiers, which affect positioning below.
 
