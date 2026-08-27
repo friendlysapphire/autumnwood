@@ -400,7 +400,7 @@ Tiled World Objects object
 -> player presses E
 -> GameMap finds world objects intersecting the player's collision rectangle
 -> main loop dispatches based on runtime object type
--> interaction creates a GameMessage
+-> interaction creates a GameNotification
 ```
 
 The current apple-tree interaction is intentionally simple. It proves
@@ -427,16 +427,20 @@ collision box. The likely later solution is Y/depth-aware rendering so
 the player can appear behind the upper portion of large props while
 still colliding only with their base.
 
-## Game messages
+## Game notifications
 
-The game now has a basic on-screen message system.
+The game has a basic on-screen notification system for transient gameplay
+feedback, such as an object interaction. This is intentionally separate
+from future NPC dialogue.
 
-A `GameMessage` stores:
+`GameNotification` stores:
 
 -   `text`
 -   `dismiss_policy`
 -   optional `timeout_secs`
--   runtime `remaining_secs`
+
+`NotificationPanel` owns the active notification, remaining time for a
+timed notification, and panel rendering.
 
 Current dismissal policies:
 
@@ -445,21 +449,21 @@ Current dismissal policies:
 
 ### `ON_MOVE_ATTEMPT`
 
-The message remains visible until the player attempts movement.
+The notification remains visible until the player attempts movement.
 
 The policy is deliberately named `ON_MOVE_ATTEMPT`, rather than
-`ON_MOVE`, because the message should disappear when the player tries to
+`ON_MOVE`, because the notification should disappear when the player tries to
 move even if collision prevents an actual position change.
 
 ### `TIMED`
 
-The message remains visible for a configured number of seconds.
+The notification remains visible for a configured number of seconds.
 
-If a timed message receives no valid positive timeout, it currently uses
-a default timeout of 3 seconds. `remaining_secs` is initialized from
-`timeout_secs` and decremented using frame `delta_secs`.
+If a timed notification receives no valid positive timeout, it uses a
+default timeout of 3 seconds. `NotificationPanel` decrements its remaining
+time using frame `delta_secs`.
 
-### Message rendering
+### Notification panel
 
 The current implementation uses:
 
@@ -468,19 +472,14 @@ The current implementation uses:
 -   rendered font text blitted onto that panel
 -   the panel blitted near the bottom of the game window
 
-The panel is only drawn when a current message exists.
+The panel is only drawn when an active notification exists.
 
 The current Pygame default font is temporary. Autumnwood should
 eventually ship its own suitable game font rather than depend on fonts
 installed on the player's system.
 
-The message system is deliberately small. NPC dialogue will likely
-require additional dismissal/advance behavior rather than forcing all
-messages into one policy.
-
-The next message-subsystem refactor will keep `GameMessage` as message data
-while moving active-message lifecycle state and panel rendering out of the
-game-loop coordinator.
+The notification system is deliberately small. NPC dialogue will need its
+own advance behavior rather than being forced into notification policies.
 
 ## Map loading and transitions
 
@@ -515,11 +514,11 @@ The current frame flow is approximately:
 8. Ask GameMap which regions intersect the new player position.
 9. Translate those regions into active region effects again.
 10. Process post-move effects such as map transitions.
-11. Select the animation state and apply message dismissal tied to movement attempts.
+11. Select the animation state and apply notification dismissal tied to movement attempts.
 12. Calculate camera position.
 13. Draw the map.
 14. Advance the player's sprite animation and draw the character.
-15. Update/draw any active game message.
+15. Update/draw any active game notification.
 16. Draw optional debug overlays.
 17. Flip the completed frame to the display.
 ```
@@ -593,9 +592,10 @@ Completed extractions so far are:
 - `movement.py` for world movement validation and collision sliding
 - `map_render.py` for Tiled tile-layer drawing
 - `debug_rendering.py` for optional diagnostic overlays
+- `notifications.py` for active-notification lifecycle and presentation
 
-The current next refactor is the message subsystem: move active-message
-lifecycle and presentation out of `main.py` while keeping the design small.
+The main-loop refactor continues: `main.py` should coordinate these systems
+rather than own their internal state or rendering details.
 
 The guiding question is not simply "how can `main.py` become shorter?"
 It is:
@@ -626,11 +626,10 @@ main.py
     sequencing systems
     applying effects
     map replacement
-    temporary message lifecycle/presentation
 ```
 
-The remaining message extraction should be introduced as one focused
-responsibility, rather than as part of a premature large-engine architecture.
+Future extractions should remain focused responsibilities, rather than parts
+of a premature large-engine architecture.
 
 ## Development roadmap
 
@@ -638,7 +637,7 @@ responsibility, rather than as part of a premature large-engine architecture.
 movement / maps / camera
 -> regions / effects / transitions
 -> object + interaction foundation
--> basic game-message UI
+-> basic notification UI
 -> refactor main into clearer runtime responsibilities
 -> first simple NPC + dialogue
 -> inventory as real interactions require it
@@ -658,7 +657,7 @@ Important roadmap notes:
     queries.
 -   The first `WorldObject` (`AppleTree`) loads from Tiled and can be
     interacted with using E.
--   A basic on-screen `GameMessage` pipeline works, including
+-   A basic on-screen `GameNotification` pipeline works, including
     `ON_MOVE_ATTEMPT` and `TIMED` dismissal policies.
 -   The main-loop refactor is currently in progress.
 -   A fade-to-black / fade-in map transition effect is planned, but is

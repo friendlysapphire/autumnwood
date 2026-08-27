@@ -7,7 +7,7 @@ from character import AnimationState, Character
 from debug_rendering import draw_debug_overlays
 from game_map import GameMap
 from map_render import draw_map
-from messages import GameMessage, GameMessageDismissPolicy
+from notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
 from modifiers import SpeedModifier
 from movement import update_character_position
 from region_effects import  MapTransitionRegionEffect, SpeedRegionEffect, get_active_region_effects
@@ -16,9 +16,9 @@ from world_object import AppleTree
 
 WINDOW_WIDTH = 960
 WINDOW_HEIGHT = 640
-MESSAGES_PANEL_HEIGHT = 96
-MESSAGES_PANEL_WIDTH = WINDOW_WIDTH - 40
-MESSAGES_PANEL_ALPHA = 100
+NOTIFICATION_PANEL_HEIGHT = 96
+NOTIFICATION_PANEL_WIDTH = WINDOW_WIDTH - 40
+NOTIFICATION_PANEL_ALPHA = 100
 
 FRAMES_PER_SECOND = 60
 
@@ -77,10 +77,13 @@ def main() -> None:
     pygame.display.set_caption("Autumnwood map test")
     clock = pygame.time.Clock()
 
-    # Temporary message-system state; this will move into the message-display refactor.
-    messages_font = pygame.font.Font(None, 22)
-    current_message: GameMessage | None = None
-
+    # The panel owns active-notification lifecycle state and its presentation.
+    notification_panel = NotificationPanel(screen=screen,
+                                           panel_width=NOTIFICATION_PANEL_WIDTH,
+                                           panel_height=NOTIFICATION_PANEL_HEIGHT,
+                                           window_height=WINDOW_HEIGHT,
+                                           alpha=NOTIFICATION_PANEL_ALPHA)
+    
     # Load the initial map, which owns its runtime regions, world objects, and dimensions.
     current_map = GameMap(BASE_MAP_PATH)
 
@@ -115,10 +118,6 @@ def main() -> None:
 
     # debug map features toggle
     show_map_debug_features = False
-
-    # dialog / message Surface
-    messages_panel = pygame.Surface((MESSAGES_PANEL_WIDTH, MESSAGES_PANEL_HEIGHT), pygame.SRCALPHA)
-    messages_panel.fill((0, 0, 0, MESSAGES_PANEL_ALPHA))
 
     running = True
 
@@ -156,8 +155,10 @@ def main() -> None:
                             for wobj in intersecting_world_objects:
 
                                 if isinstance(wobj, AppleTree):
-                                    current_message = GameMessage("You interacted with an Apple Tree!",
-                                                                  GameMessageDismissPolicy.ON_MOVE_ATTEMPT)
+                                    note = GameNotification("You interacted with an Apple Tree!",
+                                                            GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
+
+                                    notification_panel.set_notification(note)
 
         # Clear the previous frame before drawing the map again.
         screen.fill("black")
@@ -227,12 +228,14 @@ def main() -> None:
                 player.spawn(spawn_x, spawn_y)
 
         # Animation follows input intent, even when the map blocks the attempted move.
-        # An attempted move also dismisses messages that use that dismissal policy.
+        # An attempted move also dismisses notifications that use that dismissal policy.
         if move_attempt_x or move_attempt_y:
+
             player.set_animation_state(AnimationState.WALKING)
 
-            if current_message and current_message.dismiss_policy == GameMessageDismissPolicy.ON_MOVE_ATTEMPT:
-                current_message = None
+            # Dismiss notifications whose policy is based on a movement attempt.
+            notification_panel.notify_move_attempted()
+
         else:
 
             player.set_animation_state(AnimationState.IDLE)
@@ -254,27 +257,8 @@ def main() -> None:
         player_screen_y = round(player.world_y - camera_y)
         screen.blit(player.sprite, (player_screen_x, player_screen_y))
 
-        # Temporary in-loop message lifecycle and rendering; the message-display refactor
-        # will move this responsibility out of the game-loop coordinator.
-        if current_message:
-
-            timer_expired = False
-
-            # if current_message is TIMED, count down and maybe expire
-            if current_message.dismiss_policy == GameMessageDismissPolicy.TIMED:
-
-                current_message.remaining_secs -= delta_secs
-                if current_message.remaining_secs <= 0:
-                    current_message = None
-                    timer_expired = True
-
-            if not timer_expired:
-                # clear any previous messages in the panel
-                messages_panel.fill((0, 0, 0, MESSAGES_PANEL_ALPHA))
-
-                message_surface = messages_font.render(current_message.text, True, "grey87")
-                messages_panel.blit(message_surface, (20,20)) 
-                screen.blit(messages_panel, (20, WINDOW_HEIGHT - MESSAGES_PANEL_HEIGHT))
+        # Advance notification lifecycle and draw the panel above the completed world scene.
+        notification_panel.update_and_draw(delta_secs=delta_secs)
 
         # Draw optional region and collision debug overlays on top of the completed scene.
         if show_map_debug_features:
