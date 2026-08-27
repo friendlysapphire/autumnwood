@@ -1,16 +1,15 @@
-from collections.abc import Sequence
 from pathlib import Path
 
 import pygame
-import pytmx
 
 from camera import get_clamped_camera_position
 from character import AnimationState, Character
+from debug_rendering import draw_debug_overlays
 from game_map import GameMap
+from map_render import draw_map
 from messages import GameMessage, GameMessageDismissPolicy
 from modifiers import SpeedModifier
 from movement import update_character_position
-from region import RegionType
 from region_effects import  MapTransitionRegionEffect, SpeedRegionEffect, get_active_region_effects
 from world_object import AppleTree
 
@@ -228,15 +227,6 @@ def main() -> None:
                 # can't use the Character on the map / in the world until we spawn()
                 player.spawn(spawn_x, spawn_y)
 
-        camera_x, camera_y = get_clamped_camera_position(character_world_x=player.world_x,
-                                                         character_world_y=player.world_y,
-                                                         current_map=current_map,
-                                                         window_width=WINDOW_WIDTH,
-                                                         window_height=WINDOW_HEIGHT)
-
-        camera_screen_offset_x = round(-camera_x)
-        camera_screen_offset_y = round(-camera_y)
-
         # perform actions based on player trying to move or not moving at all
             # Choose the animation state from this frame's movement input.
             # Clear ON_MOVE_ATETMPT current_messages (if there is one)
@@ -249,17 +239,14 @@ def main() -> None:
 
             player.set_animation_state(AnimationState.IDLE)
 
-        # Draw each visible tile layer from bottom to top.
-        for layer in current_map.tiled_map.visible_layers:
-            if isinstance(layer, pytmx.TiledTileLayer):
-                for tile_x, tile_y, tile_image in layer.tiles():
-                    tile_world_x = tile_x * current_map.tiled_map.tilewidth
-                    tile_world_y = tile_y * current_map.tiled_map.tileheight
-                    tile_screen_x = round(tile_world_x - camera_x)
-                    tile_screen_y = round(tile_world_y - camera_y)
+        camera_x, camera_y = get_clamped_camera_position(character_world_x=player.world_x,
+                                                         character_world_y=player.world_y,
+                                                         current_map=current_map,
+                                                         window_width=WINDOW_WIDTH,
+                                                         window_height=WINDOW_HEIGHT)
 
-                    # Convert the tile's world position to its position inside the camera view.
-                    screen.blit(tile_image, (tile_screen_x, tile_screen_y))
+
+        draw_map(screen, current_map, camera_x, camera_y)
 
         # Advance the current animation based on elapsed frame time.
         player.update_sprite_animation(delta_secs)
@@ -292,37 +279,11 @@ def main() -> None:
 
         # Draw optional region and collision debug overlays on top of the completed scene.
         if show_map_debug_features:
-           
-            # Shift each region rectangle into screen coordinates for debug drawing.
-            for region in current_map.regions:
-                region_rect = region.rect
-
-                match region.type:
-                    case RegionType.SOLID:
-                        debug_rect_color = "darkorange"
-                    case RegionType.NAVIGABLE_DEEP_WATER:
-                        debug_rect_color = "cornsilk"
-                    case RegionType.NAVIGABLE_SHALLOW_WATER:
-                        debug_rect_color = "coral2"
-                    case RegionType.MAP_TRANSITION:
-                        debug_rect_color = "deeppink1"
-                    case RegionType.QUICKSAND:
-                        debug_rect_color = "goldenrod3"
-                    case _:
-                        debug_rect_color = "chocolate4"
-
-                camera_adjusted_rect = region_rect.move(camera_screen_offset_x, camera_screen_offset_y)
-                pygame.draw.rect(screen, debug_rect_color, camera_adjusted_rect, width=2)
-
-            for world_object in current_map.world_objects:
-                world_obj_rect = world_object.rect
-                camera_adjusted_rect = world_obj_rect.move(camera_screen_offset_x, camera_screen_offset_y)
-                pygame.draw.rect(screen, "mediumseagreen", camera_adjusted_rect, width=2)
-            
-            # Shift the player's collision rectangle into screen coordinates for debug drawing.
-            base_player_crect = player.get_collision_rect()
-            camera_adjusted_rect = base_player_crect.move(camera_screen_offset_x, camera_screen_offset_y)
-            pygame.draw.rect(screen, pygame.Color('darkorchid1'), camera_adjusted_rect, width=2)
+           draw_debug_overlays(screen=screen,
+                               current_map=current_map,
+                               player=player,
+                               camera_x=camera_x,
+                               camera_y=camera_y)
 
         # Make the completed frame visible
         pygame.display.flip()
