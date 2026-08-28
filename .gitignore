@@ -31,5 +31,5 @@ wheels/
 # Tiled per-user session state
 *.tiled-session
 
-# Purchased asset libraries
+# asset libraries (some homemade some purchased)
 resources/spritepacks
