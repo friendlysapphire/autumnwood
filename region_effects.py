@@ -8,7 +8,8 @@ from region import MapTransitionRegion, QuicksandRegion, Region
 class RegionEffect:
     pass
 
-# Group the region-derived effects that apply at one position by when they are processed.
+# Group the effects discovered from one set of intersecting regions.
+# get_active_region_effects() creates and populates this result for the game loop to consume.
 @dataclass(kw_only=True)
 class ActiveRegionEffects:
     pre_move_effects: list[RegionEffect] = field(default_factory=list)

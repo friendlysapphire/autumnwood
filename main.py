@@ -8,7 +8,6 @@ from debug_rendering import draw_debug_overlays
 from game_map import GameMap
 from map_render import draw_map
 from notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
-from modifiers import SpeedModifier
 from movement import update_character_position
 from region_effects import  MapTransitionRegionEffect, SpeedRegionEffect, get_active_region_effects
 from world_object import AppleTree
@@ -187,7 +186,7 @@ def main() -> None:
         region_effects = get_active_region_effects(intersecting_regions=intersecting_regions)
 
         # Extract the speed modifiers currently needed by movement. Other pre-move effect
-        # types can be processed here when a real gameplay feature introduces them.
+        # types can be processed here when a gameplay feature introduces them.
 
         #pre_move_effects = []
         speed_modifiers = [effect

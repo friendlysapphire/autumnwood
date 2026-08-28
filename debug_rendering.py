@@ -14,6 +14,8 @@ def draw_debug_overlays(*,
                         camera_y: int
                         ) -> None:
 
+    # Rect.move() (used below) adds its offset, so use the negative camera position to perform
+    # the same world-to-screen translation as world_position - camera_position.
     camera_screen_offset_x = round(-camera_x)
     camera_screen_offset_y = round(-camera_y)
 
