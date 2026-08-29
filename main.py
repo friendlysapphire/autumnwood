@@ -2,8 +2,10 @@ from pathlib import Path
 
 import pygame
 
+from animation_state import AnimationState
 from camera import get_clamped_camera_position
-from character import AnimationState, Character
+from character import Character
+from character_scaffolds import ELF_MAGE
 from debug_rendering import draw_debug_overlays
 from game_map import GameMap
 from map_render import draw_map
@@ -23,49 +25,7 @@ FRAMES_PER_SECOND = 60
 
 PROJECT_ROOT = Path(__file__).parent
 MAPS_PATH = PROJECT_ROOT / "resources"
-SPRITE_BASE_PATH = PROJECT_ROOT / "resources" / "spritepacks"
 BASE_MAP_PATH = MAPS_PATH / "testmap2.tmx"
-
-# Elf Mage player construction details
-# player speed is in pixels per second
-ELF_MAGE_PLAYER_SPEED = 120.0
-
-# Pygame draws from the image's top-left, we want to be centered aroound the feet. w/o this adjustment
-# char would appear in world down and to right of where the spawn point visually appears on the map.
-ELF_MAGE_SPAWN_OFFSET_X = 32
-ELF_MAGE_SPAWN_OFFSET_Y = 52
-
-# collision based on small rect around the feet, not whole sprite. defines a rect inside the sprite image
-# x and y are the top-left coord
-ELF_MAGE_COLLISION_RECT_X = 23
-ELF_MAGE_COLLISION_RECT_Y = 44
-ELF_MAGE_COLLISION_RECT_WIDTH = 18
-ELF_MAGE_COLLISION_RECT_HEIGHT = 6
-
-# lines in from edges of sprite image the charater (walking sprite) begins as solid. useful for drawing
-# up to edge of window correctly.
-ELF_MAGE_VISIBLE_TOP_OFFSET = 12
-ELF_MAGE_VISIBLE_BOTTOM_OFFSET = 15
-ELF_MAGE_VISIBLE_LEFT_OFFSET = 19
-ELF_MAGE_VISIBLE_RIGHT_OFFSET = 16
-
-# Define the ordered sprite-sheet frames available for each Elf Mage animation state.
-ELF_MAGE_SPRITE_ANIMS = {
-    AnimationState.IDLE : [pygame.Rect(0, 0, 64, 64),
-                           pygame.Rect(64, 0, 64, 64)],
-    AnimationState.WALKING : [pygame.Rect(0, 64, 64, 64),
-                              pygame.Rect(64, 64, 64, 64),
-                              pygame.Rect(128, 64, 64, 64)]
-                           
-}
-
-ELF_MAGE_FILE_PATH = (
-    SPRITE_BASE_PATH
-    / "PixelWorldSprites"
-    / "UnitsSprites"
-    / "Units"
-    / "ElfMage_64.png"
-)
 
 BEGIN_GAME_SPAWN_NAME = "player_start"
 
@@ -88,28 +48,19 @@ def main() -> None:
 
     # Create the player-controlled Character using the Elf Mage's
     # animation, alignment, collision, and visible-bound settings.
-    player = Character(
-        name="Elf Mage",
-        sprite_path=ELF_MAGE_FILE_PATH,
-        sprite_animation_rects=ELF_MAGE_SPRITE_ANIMS,
-        spawn_offset_x=ELF_MAGE_SPAWN_OFFSET_X,
-        spawn_offset_y=ELF_MAGE_SPAWN_OFFSET_Y,
-        collision_offset_x=ELF_MAGE_COLLISION_RECT_X,
-        collision_offset_y=ELF_MAGE_COLLISION_RECT_Y,
-        collision_box_height=ELF_MAGE_COLLISION_RECT_HEIGHT,
-        collision_box_width=ELF_MAGE_COLLISION_RECT_WIDTH,
-        default_speed=ELF_MAGE_PLAYER_SPEED,
-        visible_top_offset=ELF_MAGE_VISIBLE_TOP_OFFSET,
-        visible_bottom_offset=ELF_MAGE_VISIBLE_BOTTOM_OFFSET,
-        visible_left_offset=ELF_MAGE_VISIBLE_LEFT_OFFSET,
-        visible_right_offset=ELF_MAGE_VISIBLE_RIGHT_OFFSET,
-    )
+    player = Character(name="player", display_name="Player", scaffold=ELF_MAGE)
 
     # get player start location
-    spawn_x, spawn_y = current_map.get_spawn_coords(BEGIN_GAME_SPAWN_NAME)
+    spawn_x, spawn_y = current_map.get_player_spawn_coords(BEGIN_GAME_SPAWN_NAME)
 
     # can't use the Character on the map / in the world until we spawn()
     player.spawn(spawn_x, spawn_y)
+
+    # Spawn only NPCs authored to appear when this map loads. Delayed NPCs remain in
+    # current_map.npcs so a future trigger can place them at their initial map location.
+    for npc in current_map.npcs:
+        if npc.spawn_on_map_load:
+            npc.spawn_from_initial_map_placement()
 
     # Track whether this frame contains horizontal or vertical movement input.
     move_attempt_x: bool = False
@@ -220,9 +171,14 @@ def main() -> None:
                 dest_path = MAPS_PATH / f"{effect.destination_map}.tmx"
                 current_map = GameMap(dest_path)
 
-                spawn_x, spawn_y = current_map.get_spawn_coords(effect.destination_spawn)
+                spawn_x, spawn_y = current_map.get_player_spawn_coords(effect.destination_spawn)
 
                 player.spawn(spawn_x, spawn_y)
+
+                # Apply each destination NPC's map-load policy after replacing the active map.
+                for npc in current_map.npcs:
+                    if npc.spawn_on_map_load:
+                        npc.spawn_from_initial_map_placement()
 
         # Animation follows input intent, even when the map blocks the attempted move.
         # An attempted move also dismisses notifications that use that dismissal policy.
@@ -253,6 +209,19 @@ def main() -> None:
         player_screen_x = round(player.world_x - camera_x)
         player_screen_y = round(player.world_y - camera_y)
         screen.blit(player.sprite, (player_screen_x, player_screen_y))
+
+        # Advance and draw only NPCs that currently exist in this map's runtime world.
+        for npc in current_map.npcs:
+
+            if npc.spawned:
+                # Advance the current animation based on elapsed frame time.
+                npc.update_sprite_animation(delta_secs)
+        
+            # Convert this NPC's world position to screen coordinates and draw its sprite.
+                npc_screen_x = round(npc.world_x - camera_x)
+                npc_screen_y = round(npc.world_y - camera_y)
+                screen.blit(npc.sprite, (npc_screen_x, npc_screen_y))
+
 
         # Advance notification lifecycle and draw the panel above the completed world scene.
         notification_panel.update_and_draw(delta_secs=delta_secs)
