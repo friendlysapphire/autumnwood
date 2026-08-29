@@ -16,6 +16,7 @@ class NPC(Character):
     def __init__(self,
                  *, 
                  name: str,
+                 display_name: str,
                  scaffold: CharacterScaffold,
                  npc_type: NPCType,
                  spawn_on_map_load: bool,
@@ -26,6 +27,7 @@ class NPC(Character):
                  ):
 
         super().__init__(name=name,
+                         display_name=display_name,
                          scaffold=scaffold)
 
         # Store the feet-center location authored by this NPC's point object in Tiled.

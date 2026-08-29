@@ -133,6 +133,7 @@ class GameMap:
                                 # Map the authored type to the scaffold that defines this NPC's
                                 # visual and collision configuration.
                                 vendor1 = NPC(name=obj.name,
+                                              display_name="Traveling Vendor",
                                               scaffold=TRAVELING_VENDOR,
                                               npc_type=NPCType.TRAVELING_VENDOR,
                                               spawn_on_map_load=spawn_on_map_load,

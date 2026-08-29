@@ -17,12 +17,14 @@ class Character:
         self,
         *,
         name: str,
+        display_name: str,
         scaffold: CharacterScaffold
     ):
 
         self.name = name
         self.is_alive = True
         self.scaffold = scaffold
+        self.display_name = display_name
 
         self.speed = self.scaffold.default_speed
 
