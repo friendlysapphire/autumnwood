@@ -8,11 +8,8 @@ from animation_state import AnimationState
 PROJECT_ROOT = Path(__file__).parent
 SPRITE_BASE_PATH = PROJECT_ROOT / "resources" / "spritepacks"
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class CharacterScaffold:
-
-    # Character movement speed in pixels per second.
-    default_speed: float
 
     # Pygame draws from the image's top-left, we want to be centered aroound the feet. w/o this adjustment
     # char would appear in world down and to right of where the spawn point visually appears on the map.
@@ -41,6 +38,9 @@ class CharacterScaffold:
 
     sprite_file_path: Path
 
+    # Character movement speed in pixels per second.
+    default_speed: float = 120.0
+
 
 # -----
 
@@ -63,7 +63,6 @@ ELF_MAGE_FILE_PATH = (
 )
 
 ELF_MAGE = CharacterScaffold(
-    default_speed=120.0,
     spawn_offset_x=32,
     spawn_offset_y=52,
     collision_offset_x=23,
@@ -80,8 +79,51 @@ ELF_MAGE = CharacterScaffold(
 
 # ------
 
+# The vendor sheet has eight 128x128 idle frames in one horizontal row.
+TRAVELING_VENDOR_SPRITE_ANIMS = {
+    AnimationState.IDLE: (
+        pygame.Rect(0, 0, 128, 128),
+        pygame.Rect(128, 0, 128, 128),
+        pygame.Rect(256, 0, 128, 128),
+        pygame.Rect(384, 0, 128, 128),
+        pygame.Rect(512, 0, 128, 128),
+        pygame.Rect(640, 0, 128, 128),
+        pygame.Rect(768, 0, 128, 128),
+        pygame.Rect(896, 0, 128, 128),
+    ),
+}
 
+TRAVELING_VENDOR_FILE_PATH = (
+    SPRITE_BASE_PATH
+    / "epicrpg"
+    / "grassland2.1"
+    / "Characters"
+    / "vendor-idle.png"
+)
 
+TRAVELING_VENDOR = CharacterScaffold(
+    # This first NPC is designed to be stationary in the art pack,
+    # so it has no WALKING frames... but let's allow it to move slowly
+    default_speed=75.0,
 
+    # Tiled spawn coordinates represent the vendor's approximate feet-center.
+    spawn_offset_x=64,
+    spawn_offset_y=89,
+
+    # Initial small body/feet collision rectangle. Verify visually once rendered.
+    collision_offset_x=57,
+    collision_offset_y=81,
+    collision_rect_width=14,
+    collision_rect_height=6,
+
+    # Measured transparent margins around the vendor's 128x128 idle frames.
+    visible_top_offset=33,
+    visible_bottom_offset=39,
+    visible_left_offset=44,
+    visible_right_offset=46,
+
+    sprite_animation_rects=TRAVELING_VENDOR_SPRITE_ANIMS,
+    sprite_file_path=TRAVELING_VENDOR_FILE_PATH,
+)
 
 

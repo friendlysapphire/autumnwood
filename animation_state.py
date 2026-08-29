@@ -5,6 +5,7 @@ from enum import StrEnum
 class AnimationState(StrEnum):
     IDLE = "idle"
     WALKING = "walking"
+    TALKING = "talking"
     ATTACK_PREP = "attack_prep"
     ATTACK = "attack"
     DYING = "dying"

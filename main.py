@@ -48,7 +48,7 @@ def main() -> None:
 
     # Create the player-controlled Character using the Elf Mage's
     # animation, alignment, collision, and visible-bound settings.
-    player = Character(name="Elf Mage", scaffold=ELF_MAGE)
+    player = Character(name="player", scaffold=ELF_MAGE)
 
     # get player start location
     spawn_x, spawn_y = current_map.get_spawn_coords(BEGIN_GAME_SPAWN_NAME)
