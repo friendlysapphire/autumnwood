@@ -5,7 +5,7 @@ import pygame
 from animation_state import AnimationState
 from camera import get_clamped_camera_position
 from character import Character
-from character_definitions import ELF_MAGE
+from character_scaffolds import ELF_MAGE
 from debug_rendering import draw_debug_overlays
 from game_map import GameMap
 from map_render import draw_map
@@ -48,7 +48,7 @@ def main() -> None:
 
     # Create the player-controlled Character using the Elf Mage's
     # animation, alignment, collision, and visible-bound settings.
-    player = Character(name="Elf Mage", definition=ELF_MAGE)
+    player = Character(name="Elf Mage", scaffold=ELF_MAGE)
 
     # get player start location
     spawn_x, spawn_y = current_map.get_spawn_coords(BEGIN_GAME_SPAWN_NAME)

@@ -4,7 +4,7 @@ from typing import Literal
 import pygame
 
 from animation_state import AnimationState
-from character_definitions import CharacterDefinition
+from character_scaffolds import CharacterScaffold
 from modifiers import SpeedModifier
 
 type DirectionValue = Literal[-1, 0, 1]
@@ -17,14 +17,14 @@ class Character:
         self,
         *,
         name: str,
-        definition: CharacterDefinition
+        scaffold: CharacterScaffold
     ):
 
         self.name = name
         self.is_alive = True
-        self.definition = definition
+        self.scaffold = scaffold
 
-        self.speed = self.definition.default_speed
+        self.speed = self.scaffold.default_speed
 
         # These values are initialized by spawn().
         # Until then, the character exists but has not been placed in the world.
@@ -34,13 +34,13 @@ class Character:
         self.direction_y: DirectionValue = 0
 
         # set up our initial sprite 
-        sprite_sheet = pygame.image.load(self.definition.sprite_file_path)
+        sprite_sheet = pygame.image.load(self.scaffold.sprite_file_path)
 
         # convert_alpha() requires Pygame's display mode to already exist.
         # Note: Constructing a Character (ie this code) therefore depends on display initialization.
         self._sprite_sheet = sprite_sheet.convert_alpha()
 
-        sprite_idle_rects = self.definition.sprite_animation_rects.get(AnimationState.IDLE)
+        sprite_idle_rects = self.scaffold.sprite_animation_rects.get(AnimationState.IDLE)
 
         if not sprite_idle_rects:
             raise ValueError("sprite_animation_rects must include at least one IDLE frame.")
@@ -50,7 +50,7 @@ class Character:
 
         # Track the active animation, its current frame, and elapsed time between frame changes.
         self._current_animation_state = AnimationState.IDLE
-        self._current_animation_state_num_frames = len(self.definition.sprite_animation_rects[AnimationState.IDLE])
+        self._current_animation_state_num_frames = len(self.scaffold.sprite_animation_rects[AnimationState.IDLE])
 
         self._current_frame_index = 0
         self._animation_elapsed_time = 0.0
@@ -69,8 +69,8 @@ class Character:
         direction_y: DirectionValue = 0,
     ) -> None:
 
-        self.world_x = x - self.definition.spawn_offset_x
-        self.world_y = y - self.definition.spawn_offset_y
+        self.world_x = x - self.scaffold.spawn_offset_x
+        self.world_y = y - self.scaffold.spawn_offset_y
         self.direction_x = direction_x
         self.direction_y = direction_y
         self.spawned = True
@@ -100,10 +100,10 @@ class Character:
             )
 
         return pygame.Rect(
-            use_x + self.definition.collision_offset_x,
-            use_y + self.definition.collision_offset_y,
-            self.definition.collision_rect_width,
-            self.definition.collision_rect_height
+            use_x + self.scaffold.collision_offset_x,
+            use_y + self.scaffold.collision_offset_y,
+            self.scaffold.collision_rect_width,
+            self.scaffold.collision_rect_height
             )
 
     # Calculate where the current direction and speed would move the character
@@ -133,10 +133,10 @@ class Character:
     ) -> bool:
 
         in_bounds = (
-            proposed_x + self.definition.visible_left_offset >= 1
-            and proposed_x + self.sprite.get_width() - self.definition.visible_right_offset <= x_size
-            and proposed_y + self.definition.visible_top_offset >= 1
-            and proposed_y + self.sprite.get_height() - self.definition.visible_bottom_offset <= y_size
+            proposed_x + self.scaffold.visible_left_offset >= 1
+            and proposed_x + self.sprite.get_width() - self.scaffold.visible_right_offset <= x_size
+            and proposed_y + self.scaffold.visible_top_offset >= 1
+            and proposed_y + self.sprite.get_height() - self.scaffold.visible_bottom_offset <= y_size
         )
         return in_bounds
 
@@ -145,7 +145,7 @@ class Character:
     def set_animation_state(self, state: AnimationState) -> None:
 
         # Resolve the requested state to one this character can actually display.
-        state_rects = self.definition.sprite_animation_rects.get(state)
+        state_rects = self.scaffold.sprite_animation_rects.get(state)
         if state_rects:
             new_state = state
         else:
@@ -156,11 +156,11 @@ class Character:
 
         # Start the new animation from its first frame and reset its timer.
         self._current_animation_state = new_state
-        self._current_animation_state_num_frames = len(self.definition.sprite_animation_rects[self._current_animation_state])
+        self._current_animation_state_num_frames = len(self.scaffold.sprite_animation_rects[self._current_animation_state])
         self._animation_elapsed_time = 0.0
         self._current_frame_index = 0
 
-        anim_rects = self.definition.sprite_animation_rects[self._current_animation_state]
+        anim_rects = self.scaffold.sprite_animation_rects[self._current_animation_state]
         self.sprite = self._sprite_sheet.subsurface(anim_rects[self._current_frame_index])
         
     # Accumulate elapsed time and advance the active animation when one frame interval has passed.
@@ -177,7 +177,7 @@ class Character:
             self._animation_elapsed_time = 0.0
 
             # Replace the visible sprite with the newly selected animation frame.
-            anim_rects = self.definition.sprite_animation_rects[self._current_animation_state]
+            anim_rects = self.scaffold.sprite_animation_rects[self._current_animation_state]
             self.sprite = self._sprite_sheet.subsurface(anim_rects[self._current_frame_index])
 
 

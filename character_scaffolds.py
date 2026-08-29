@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).parent
 SPRITE_BASE_PATH = PROJECT_ROOT / "resources" / "spritepacks"
 
 @dataclass(frozen=True)
-class CharacterDefinition:
+class CharacterScaffold:
 
     # Character movement speed in pixels per second.
     default_speed: float
@@ -37,10 +37,7 @@ class CharacterDefinition:
     visible_right_offset: int
 
     # Define the ordered sprite-sheet frames available for each Character animation state.
-
-    #TODO -- we're using frozen but lists are still mutable. should make these tuples
-    # when we have time for philosophical purity
-    sprite_animation_rects: dict[AnimationState, list[pygame.Rect]]
+    sprite_animation_rects: dict[AnimationState, tuple[pygame.Rect, ...]]
 
     sprite_file_path: Path
 
@@ -49,11 +46,11 @@ class CharacterDefinition:
 
 # Define the ordered sprite-sheet frames available for each Elf Mage animation state.
 ELF_MAGE_SPRITE_ANIMS = {
-    AnimationState.IDLE : [pygame.Rect(0, 0, 64, 64),
-                           pygame.Rect(64, 0, 64, 64)],
-    AnimationState.WALKING : [pygame.Rect(0, 64, 64, 64),
+    AnimationState.IDLE : (pygame.Rect(0, 0, 64, 64),
+                           pygame.Rect(64, 0, 64, 64)),
+    AnimationState.WALKING : (pygame.Rect(0, 64, 64, 64),
                               pygame.Rect(64, 64, 64, 64),
-                              pygame.Rect(128, 64, 64, 64)]
+                              pygame.Rect(128, 64, 64, 64))
                            
 }
 
@@ -65,7 +62,7 @@ ELF_MAGE_FILE_PATH = (
     / "ElfMage_64.png"
 )
 
-ELF_MAGE = CharacterDefinition(
+ELF_MAGE = CharacterScaffold(
     default_speed=120.0,
     spawn_offset_x=32,
     spawn_offset_y=52,

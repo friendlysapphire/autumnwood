@@ -13,6 +13,8 @@ def draw_map(screen: pygame.Surface,
     
     # Tiled supplies tile coordinates; convert them to world pixels, then subtract the
     # camera's world position to place each tile in the screen view.
+    
+    # TODO : skip processing tiles that won't be drawn as soon as we can figure that out
     for layer in current_map.tiled_map.visible_layers:
         if isinstance(layer, pytmx.TiledTileLayer):
             for tile_x, tile_y, tile_image in layer.tiles():
