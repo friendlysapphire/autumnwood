@@ -5,6 +5,8 @@ import pytmx
 from pytmx.util_pygame import load_pygame
 
 from character import Character
+from character_scaffolds import TRAVELING_VENDOR
+from npcs import NPC, NPCType
 from region import MapTransitionRegion, QuicksandRegion, Region, RegionType
 from world_object import AppleTree, WorldObject, WorldObjectType
 
@@ -20,15 +22,16 @@ class GameMap:
         # Load the Tiled map and its referenced tile images.
         self.tiled_map = load_pygame(map_path)
 
-        # Load the gameplay regions defined by the map.
-        self.regions, self.world_objects = self._load_map_regions_and_world_objects()
+        # Convert the map's authored gameplay elements into their runtime representations.
+        self.regions, self.world_objects, self.npcs = self._load_map_elements()
 
         # Convert the map dimensions from tiles into world pixels.
         self.height = self.tiled_map.height * self.tiled_map.tileheight
         self.width = self.tiled_map.width * self.tiled_map.tilewidth
 
+
     # Find the requested named spawn point in Tiled and return its world coordinates.
-    def get_spawn_coords(self,
+    def get_player_spawn_coords(self,
                                spawn_name: str
                                ) -> tuple[float, float]:
 
@@ -74,13 +77,14 @@ class GameMap:
 
     # INTERNAL ONLY METHODS
 
-    # Load gameplay regions and world objects from Tiled.
+    # Load gameplay regions, world objects, and NPCs from Tiled.
     # Collisions become ordinary SOLID Regions; special Regions and World Objects become
     # specialized runtime objects only when their authored data requires it.
-    def _load_map_regions_and_world_objects(self) -> tuple[tuple[Region, ...], tuple[WorldObject, ...]]:
+    def _load_map_elements(self) -> tuple[tuple[Region, ...], tuple[WorldObject, ...], list[NPC]]:
 
         region_list: list[Region] = []
         world_obj_list: list[WorldObject] = []
+        npcs_list: list[NPC] = []
 
         for layer in self.tiled_map.layers:
             if isinstance(layer, pytmx.TiledObjectGroup):
@@ -112,6 +116,36 @@ class GameMap:
                             raise KeyError(
                                 f"World Object at ({obj.x}, {obj.y}) needs a recognized "
                                 f"world_object_type: {obj.properties}"
+                            )
+                if layer.name == "NPCs":
+                    for obj in layer:
+
+                        # NPC point objects provide a runtime character type and its initial
+                        # feet-center placement. Delayed NPCs opt out of only the map-load spawn.
+                        npc_type = obj.properties.get("character_type")
+
+                        spawn_on_map_load = obj.properties.get("spawn_on_map_load", True)
+  
+
+                        match npc_type:
+
+                            case NPCType.TRAVELING_VENDOR:
+                                # Map the authored type to the scaffold that defines this NPC's
+                                # visual and collision configuration.
+                                vendor1 = NPC(name=obj.name,
+                                              scaffold=TRAVELING_VENDOR,
+                                              npc_type=NPCType.TRAVELING_VENDOR,
+                                              spawn_on_map_load=spawn_on_map_load,
+                                              initial_x_spawn=obj.x,
+                                              initial_y_spawn=obj.y)
+                                
+                                npcs_list.append(vendor1)
+                                print(obj.properties)
+
+                            case _:
+                                raise KeyError(
+                                f"NPC object at ({obj.x}, {obj.y}) needs a recognized "
+                                f"character_type: {obj.properties} from NPCType"
                             )
 
                 if layer.name == "Regions":
@@ -147,5 +181,7 @@ class GameMap:
                             raise KeyError(
                                 f"All objects in Regions layer need region_type: {obj.x}: {obj.y} : {obj.properties}")
 
-                            
-        return tuple(region_list), tuple(world_obj_list)
+        # NPCs are mutable map runtime state: they may move, be removed, or appear later.
+        # Regions and current world objects remain fixed-size map-derived collections for now.
+        return tuple(region_list), tuple(world_obj_list), npcs_list
+    

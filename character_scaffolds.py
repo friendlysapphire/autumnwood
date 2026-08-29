@@ -34,6 +34,10 @@ class CharacterScaffold:
     visible_right_offset: int
 
     # Define the ordered sprite-sheet frames available for each Character animation state.
+    # TODO 
+    # this is a frozen dataclass but the dict and these rects are mutable. when python 3.15 is avail, make this a frozendict
+    # then just don't worry about the pygame.Rect mutablility.... we're never going to want to hash this. i just 
+    # want to learn about these language features 
     sprite_animation_rects: dict[AnimationState, tuple[pygame.Rect, ...]]
 
     sprite_file_path: Path

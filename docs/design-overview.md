@@ -78,6 +78,20 @@ General convention:
 The visible tree art can remain on `Scenery`; the `World Objects` layer
 provides the invisible gameplay representation used by Python.
 
+The current objects are static. Runtime state such as a door becoming
+unlocked, changing art, or becoming passable should be added when a real
+object requires it rather than pre-built as a generic system.
+
+### `NPCs`
+
+Point objects describing non-player characters that belong to this map.
+Each requires a `character_type` custom property so Python can select the
+appropriate character scaffold. `spawn_on_map_load` defaults to `true`;
+set it to `false` for an NPC that a future trigger should place later.
+
+The point is the NPC's initial position. It does not need a separate
+entry on the `Spawns` layer.
+
 ### `Spawns`
 
 Named locations where characters can be placed, such as `player_start`,
@@ -115,7 +129,7 @@ Constructing a `GameMap` from a `.tmx` path currently:
 
 -   loads the Tiled map and referenced tile images
 -   converts Tiled gameplay metadata into runtime regions and world
-    objects
+    objects, and NPCs
 -   calculates the map's pixel width and height
 
 Important public state currently includes:
@@ -123,6 +137,7 @@ Important public state currently includes:
 -   `tiled_map`
 -   `regions`
 -   `world_objects`
+-   `npcs`
 -   `width`
 -   `height`
 
@@ -133,7 +148,7 @@ particular map.
 
 Current examples:
 
--   `get_spawn_coords()`
+-   `get_player_spawn_coords()`
 -   `get_regions_intersecting_character()`
 -   `get_world_objs_intersecting_character()`
 
@@ -157,7 +172,7 @@ and `region_effects.py`.
 
 ### Internal Tiled conversion
 
-`GameMap._load_map_regions_and_world_objects()` converts Tiled object
+`GameMap._load_map_elements()` converts Tiled object
 layers into Python runtime objects.
 
 ``` text
@@ -172,6 +187,9 @@ Regions / quicksand
 
 World Objects / apple_tree
 -> AppleTree
+
+NPCs / traveling_vendor
+-> NPC(scaffold=TRAVELING_VENDOR)
 ```
 
 The leading underscore marks this loader as an internal implementation
@@ -203,6 +221,18 @@ places it at a map spawn location and establishes its world coordinates.
 
 Position-dependent methods should not be used before the character has
 been spawned.
+
+### Character scaffolds and NPCs
+
+`CharacterScaffold` holds the reusable, static configuration for one
+kind of character: its sprite source, frame rectangles, collision and
+visible bounds, spawn offsets, and default speed. It is keyword-only so
+each value remains clear at the definition site.
+
+`NPC` is a `Character` with map-authored placement information such as
+its NPC type, initial location, and whether it should spawn when the map
+loads. `GameMap` loads that data; `main.py` applies the spawn policy when
+the initial map or a transition destination becomes current.
 
 ### Collision rectangle
 
@@ -517,7 +547,7 @@ The current frame flow is approximately:
 11. Select the animation state and apply notification dismissal tied to movement attempts.
 12. Calculate camera position.
 13. Draw the map.
-14. Advance the player's sprite animation and draw the character.
+14. Advance and draw the player and any spawned NPCs.
 15. Update/draw any active game notification.
 16. Draw optional debug overlays.
 17. Flip the completed frame to the display.
@@ -593,6 +623,7 @@ Completed extractions so far are:
 - `map_render.py` for Tiled tile-layer drawing
 - `debug_rendering.py` for optional diagnostic overlays
 - `notifications.py` for active-notification lifecycle and presentation
+- `npcs.py` for NPC-specific map placement state
 
 The main-loop refactor continues: `main.py` should coordinate these systems
 rather than own their internal state or rendering details.
@@ -611,6 +642,7 @@ GameMap
     dimensions
     regions
     world objects
+    NPCs
     spawn lookup
     map-specific intersection queries
 
@@ -619,6 +651,9 @@ region_effects.py
 
 Character
     character-owned state and movement/animation calculations
+
+NPC
+    a Character with map-authored initial placement and spawn policy
 
 main.py
     game-loop orchestration
@@ -639,7 +674,8 @@ movement / maps / camera
 -> object + interaction foundation
 -> basic notification UI
 -> refactor main into clearer runtime responsibilities
--> first simple NPC + dialogue
+-> first NPC map loading / spawning / rendering
+-> NPC interaction + dialogue
 -> inventory as real interactions require it
 -> health / damage
 -> contextual traversal and blocking
@@ -659,7 +695,8 @@ Important roadmap notes:
     interacted with using E.
 -   A basic on-screen `GameNotification` pipeline works, including
     `ON_MOVE_ATTEMPT` and `TIMED` dismissal policies.
--   The main-loop refactor is currently in progress.
+-   The main loop now loads and renders map-authored NPCs. The first
+    NPC's interaction and dialogue are the next content feature.
 -   A fade-to-black / fade-in map transition effect is planned, but is
     not urgent.
 -   Y/depth-aware rendering for large props such as trees is a known
@@ -668,12 +705,14 @@ Important roadmap notes:
     current window is fixed-size.
 -   The game should eventually ship its own font rather than depend on
     system fonts.
--   NPC/dialogue should arrive relatively early after the current
-    refactor so the project begins to feel like a game rather than only
-    an environmental engine.
+-   Do not build NPC AI, pathfinding, or a generalized dialogue engine
+    before the first NPC interaction shows what is actually needed.
 -   Do not build inventory, harvesting, respawn, or a generalized item
     system merely because the apple tree exists; add those when an
     actual interaction requires them.
+-   When an object first needs to change state (for example, an
+    unlocked door or collected item), add the smallest runtime-state
+    model that supports that real interaction.
 -   Do not build the final large overworld yet.
 -   Near the content phase, prototype overworld scale with crude maps
     and actual travel time before committing to final dimensions.

@@ -51,10 +51,16 @@ def main() -> None:
     player = Character(name="player", scaffold=ELF_MAGE)
 
     # get player start location
-    spawn_x, spawn_y = current_map.get_spawn_coords(BEGIN_GAME_SPAWN_NAME)
+    spawn_x, spawn_y = current_map.get_player_spawn_coords(BEGIN_GAME_SPAWN_NAME)
 
     # can't use the Character on the map / in the world until we spawn()
     player.spawn(spawn_x, spawn_y)
+
+    # Spawn only NPCs authored to appear when this map loads. Delayed NPCs remain in
+    # current_map.npcs so a future trigger can place them at their initial map location.
+    for npc in current_map.npcs:
+        if npc.spawn_on_map_load:
+            npc.spawn_from_initial_map_placement()
 
     # Track whether this frame contains horizontal or vertical movement input.
     move_attempt_x: bool = False
@@ -165,9 +171,14 @@ def main() -> None:
                 dest_path = MAPS_PATH / f"{effect.destination_map}.tmx"
                 current_map = GameMap(dest_path)
 
-                spawn_x, spawn_y = current_map.get_spawn_coords(effect.destination_spawn)
+                spawn_x, spawn_y = current_map.get_player_spawn_coords(effect.destination_spawn)
 
                 player.spawn(spawn_x, spawn_y)
+
+                # Apply each destination NPC's map-load policy after replacing the active map.
+                for npc in current_map.npcs:
+                    if npc.spawn_on_map_load:
+                        npc.spawn_from_initial_map_placement()
 
         # Animation follows input intent, even when the map blocks the attempted move.
         # An attempted move also dismisses notifications that use that dismissal policy.
@@ -198,6 +209,19 @@ def main() -> None:
         player_screen_x = round(player.world_x - camera_x)
         player_screen_y = round(player.world_y - camera_y)
         screen.blit(player.sprite, (player_screen_x, player_screen_y))
+
+        # Advance and draw only NPCs that currently exist in this map's runtime world.
+        for npc in current_map.npcs:
+
+            if npc.spawned:
+                # Advance the current animation based on elapsed frame time.
+                npc.update_sprite_animation(delta_secs)
+        
+            # Convert this NPC's world position to screen coordinates and draw its sprite.
+                npc_screen_x = round(npc.world_x - camera_x)
+                npc_screen_y = round(npc.world_y - camera_y)
+                screen.blit(npc.sprite, (npc_screen_x, npc_screen_y))
+
 
         # Advance notification lifecycle and draw the panel above the completed world scene.
         notification_panel.update_and_draw(delta_secs=delta_secs)
