@@ -167,8 +167,8 @@ main:
 When and how should those effects be applied?
 ```
 
-This separation also avoids circular dependencies between `game_map.py`
-and `region_effects.py`.
+This separation also avoids circular dependencies between `world/game_map.py`
+and `world/region_effects.py`.
 
 ### Internal Tiled conversion
 
@@ -351,8 +351,8 @@ It deliberately does not receive a `GameMap` or a `Character`. The
 caller first asks the map which regions intersect the character, then
 passes those regions into the effect function.
 
-This keeps the dependency boundary clean and prevents `game_map.py` and
-`region_effects.py` from importing each other.
+This keeps the dependency boundary clean and prevents `world/game_map.py` and
+`world/region_effects.py` from importing each other.
 
 ### Pre-move effects
 
@@ -581,7 +581,7 @@ After player movement:
 Debug rectangles are shifted into screen coordinates with the same
 camera offset.
 
-Camera positioning currently lives in the focused `camera.py` function. A
+Camera positioning currently lives in the focused `rendering/camera.py` function. A
 dedicated `Camera` object remains a possible later refactor only if the
 camera gains enough state or behavior to justify one.
 
@@ -615,15 +615,17 @@ be visually verified on the map.
 The game began with much of its map/runtime logic in `main.py`.
 Refactoring is now happening incrementally rather than as a rewrite.
 
-Completed extractions so far are:
+The current source packages are:
 
-- `GameMap` for loaded map state and spatial queries
-- `camera.py` for clamped camera-position calculation
-- `movement.py` for world movement validation and collision sliding
-- `map_render.py` for Tiled tile-layer drawing
-- `debug_rendering.py` for optional diagnostic overlays
-- `notifications.py` for active-notification lifecycle and presentation
-- `npcs.py` for NPC-specific map placement state
+- `characters/` for character state, animation definitions, scaffolds,
+  and NPCs
+- `world/` for loaded map state, regions/effects, world objects, and
+  map-aware movement validation
+- `rendering/` for camera positioning, map drawing, and debug overlays
+- `ui/` for player-interface elements such as notifications
+
+`main.py` remains at the project root as the entry point and game-loop
+coordinator.
 
 The main-loop refactor continues: `main.py` should coordinate these systems
 rather than own their internal state or rendering details.
@@ -637,7 +639,7 @@ It is:
 Current direction:
 
 ``` text
-GameMap
+world/game_map.py
     loaded map data
     dimensions
     regions
@@ -646,13 +648,13 @@ GameMap
     spawn lookup
     map-specific intersection queries
 
-region_effects.py
+world/region_effects.py
     translate intersecting regions into effects
 
-Character
+characters/character.py
     character-owned state and movement/animation calculations
 
-NPC
+characters/npcs.py
     a Character with map-authored initial placement and spawn policy
 
 main.py

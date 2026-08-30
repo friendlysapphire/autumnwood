@@ -32,7 +32,7 @@ Use Tiled's built-in **Name** field only when a particular region needs its own 
 
 Ordinary collision rectangles belong on the **Collisions** layer. They are automatically treated as `SOLID` and do not need `region_type`.
 
-## 2. Add the region type in `region.py`
+## 2. Add the region type in `world/region.py`
 
 Add the Tiled string value to `RegionType`.
 
@@ -158,7 +158,8 @@ Examples:
 - Quicksand produces a speed effect.
 - A map-transition region produces a transition effect.
 
-If the region produces a new kind of effect, add a small dataclass in `region_effects.py`.
+If the region produces a new kind of effect, add a small dataclass in
+`world/region_effects.py`.
 
 Existing examples:
 
@@ -474,13 +475,13 @@ For temporary effects such as quicksand, specifically verify that leaving the re
 When adding a region, check:
 
 - Tiled **Regions** layer and custom properties
-- `RegionType` in `region.py`
+- `RegionType` in `world/region.py`
 - `Region.is_walkable_by_default()`
-- optional new `Region` subclass in `region.py`
-- `GameMap` loading logic in `game_map.py`
-- optional new effect dataclass in `region_effects.py`
+- optional new `Region` subclass in `world/region.py`
+- `GameMap` loading logic in `world/game_map.py`
+- optional new effect dataclass in `world/region_effects.py`
 - new effect subclass of `RegionEffect`, if needed
-- `get_active_region_effects()` in `region_effects.py`
+- `get_active_region_effects()` in `world/region_effects.py`
 - `GameMap.get_regions_intersecting_character()`
 - pre-move or post-move processing in the main loop
 - `SpeedModifier` compatibility if the effect changes movement speed

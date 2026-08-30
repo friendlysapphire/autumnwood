@@ -23,8 +23,11 @@ The game currently supports:
 - terrain-based movement effects such as quicksand
 - transitions between maps using named spawn points
 - debug visualization of regions and collision areas
+- a first interactable world object: an apple tree
+- on-screen gameplay notifications
+- map-authored NPC loading, spawning, and rendering
 
-The next major piece is the world-object and interaction system, followed by basic NPCs and dialogue.
+The next major piece is NPC interaction and dialogue.
 
 ## Documentation
 
