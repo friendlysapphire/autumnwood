@@ -5,7 +5,7 @@ import pygame
 from characters.animation_state import AnimationState
 from characters.character import Character
 from characters.character_scaffolds import ELF_MAGE
-from notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
+from ui.notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
 from rendering.camera import get_clamped_camera_position
 from rendering.debug_rendering import draw_debug_overlays
 from rendering.map_render import draw_map
