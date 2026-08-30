@@ -1,7 +1,7 @@
 from enum import StrEnum
 
-from character import Character, DirectionValue
-from character_scaffolds import CharacterScaffold
+from characters.character import Character, DirectionValue
+from characters.character_scaffolds import CharacterScaffold
 
 
 # Define the NPC types that map authors may select through the character_type property.

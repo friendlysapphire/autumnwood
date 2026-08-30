@@ -2,17 +2,17 @@ from pathlib import Path
 
 import pygame
 
-from animation_state import AnimationState
-from camera import get_clamped_camera_position
-from character import Character
-from character_scaffolds import ELF_MAGE
-from debug_rendering import draw_debug_overlays
-from game_map import GameMap
-from map_render import draw_map
+from characters.animation_state import AnimationState
+from characters.character import Character
+from characters.character_scaffolds import ELF_MAGE
 from notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
-from movement import update_character_position
-from region_effects import  MapTransitionRegionEffect, SpeedRegionEffect, get_active_region_effects
-from world_object import AppleTree
+from rendering.camera import get_clamped_camera_position
+from rendering.debug_rendering import draw_debug_overlays
+from rendering.map_render import draw_map
+from world.game_map import GameMap
+from world.movement import update_character_position
+from world.region_effects import  MapTransitionRegionEffect, SpeedRegionEffect, get_active_region_effects
+from world.world_object import AppleTree
 
 
 WINDOW_WIDTH = 960

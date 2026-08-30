@@ -1,4 +1,4 @@
-from game_map import GameMap
+from world.game_map import GameMap
 
 # Return the world coordinates that should appear at the window's top-left corner.
 # Rendering code converts world coordinates to screen coordinates by subtracting

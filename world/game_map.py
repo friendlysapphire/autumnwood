@@ -4,11 +4,11 @@ import pygame
 import pytmx
 from pytmx.util_pygame import load_pygame
 
-from character import Character
-from character_scaffolds import TRAVELING_VENDOR
-from npcs import NPC, NPCType
-from region import MapTransitionRegion, QuicksandRegion, Region, RegionType
-from world_object import AppleTree, WorldObject, WorldObjectType
+from characters.character import Character
+from characters.character_scaffolds import TRAVELING_VENDOR
+from characters.npcs import NPC, NPCType
+from world.region import MapTransitionRegion, QuicksandRegion, Region, RegionType
+from world.world_object import AppleTree, WorldObject, WorldObjectType
 
 
 QUICKSAND_PERCENT_CHANGE = -0.50

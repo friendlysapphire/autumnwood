@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pygame
 
-from animation_state import AnimationState
+from characters.animation_state import AnimationState
 
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent
 SPRITE_BASE_PATH = PROJECT_ROOT / "resources" / "spritepacks"
 
 @dataclass(frozen=True, kw_only=True)
@@ -129,5 +129,3 @@ TRAVELING_VENDOR = CharacterScaffold(
     sprite_animation_rects=TRAVELING_VENDOR_SPRITE_ANIMS,
     sprite_file_path=TRAVELING_VENDOR_FILE_PATH,
 )
-
-
