@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
-from character import Character
-from game_map import GameMap
+from characters.character import Character
+from world.game_map import GameMap
 from modifiers import SpeedModifier
 
 # This module applies world movement policy. Character calculates a proposed position;

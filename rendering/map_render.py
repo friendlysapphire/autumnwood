@@ -1,7 +1,7 @@
 import pygame      
 import pytmx 
 
-from game_map import GameMap 
+from world.game_map import GameMap 
 
      
 # Draw each visible tile layer from bottom to top.

@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from region import MapTransitionRegion, QuicksandRegion, Region
+from world.region import MapTransitionRegion, QuicksandRegion, Region
 
 # Shared base type lets ActiveRegionEffects group different effect descriptions together.
 @dataclass

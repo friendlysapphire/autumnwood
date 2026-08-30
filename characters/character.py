@@ -3,8 +3,8 @@ from typing import Literal
 
 import pygame
 
-from animation_state import AnimationState
-from character_scaffolds import CharacterScaffold
+from characters.animation_state import AnimationState
+from characters.character_scaffolds import CharacterScaffold
 from modifiers import SpeedModifier
 
 type DirectionValue = Literal[-1, 0, 1]
@@ -181,6 +181,5 @@ class Character:
             # Replace the visible sprite with the newly selected animation frame.
             anim_rects = self.scaffold.sprite_animation_rects[self._current_animation_state]
             self.sprite = self._sprite_sheet.subsurface(anim_rects[self._current_frame_index])
-
 
 

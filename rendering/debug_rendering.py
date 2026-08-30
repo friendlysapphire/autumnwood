@@ -1,9 +1,9 @@
 
 import pygame      
 
-from character import Character
-from game_map import GameMap 
-from region import RegionType
+from characters.character import Character
+from world.game_map import GameMap 
+from world.region import RegionType
 
 # Draw runtime regions and hitboxes over the completed scene for diagnosis only.
 def draw_debug_overlays(*,
