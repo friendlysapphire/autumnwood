@@ -49,6 +49,11 @@ def draw_debug_overlays(*,
         npc_rect = npc.interaction_rect
         camera_adjusted_rect = npc_rect.move(camera_screen_offset_x, camera_screen_offset_y)
         pygame.draw.rect(screen, "gold4", camera_adjusted_rect, width=2)
+
+        npc_rect = npc.get_collision_rect()
+        camera_adjusted_rect = npc_rect.move(camera_screen_offset_x, camera_screen_offset_y)
+        pygame.draw.rect(screen, "gold", camera_adjusted_rect, width=2)
+
         
     # Shift the player's collision rectangle into screen coordinates for debug drawing.
     base_player_crect = player.get_collision_rect()

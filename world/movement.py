@@ -33,7 +33,14 @@ def is_proposed_player_move_valid(
             if player_collision_rect.colliderect(region.rect):
                 return False
 
-    return in_bounds
+    # Check the proposed player collision box against NPC collisions
+    spawned_npcs = [npc for npc in current_map.npcs if npc.spawned]
+
+    for npc in spawned_npcs:
+        if player_collision_rect.colliderect(npc.get_collision_rect()):
+            return False
+
+    return True
 
 # Resolve the player's attempted movement after direction has been set.
 # For diagonal movement, try the full move first, then X-only, then Y-only.

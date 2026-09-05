@@ -59,6 +59,36 @@ class GameMap:
     
         return tuple(intersecting_regions)
 
+    # Return every npc collision rect currently intersecting the player's collision rectangle.
+    def get_npcs_intersecting_character_as_collisions(self,
+                                           character: Character
+                                           ) -> tuple[NPC, ...]:
+
+        char_collision_rect = character.get_collision_rect()
+
+        intersecting_npcs = (
+            npc
+            for npc in self.npcs
+            if npc.spawned and char_collision_rect.colliderect(npc.get_collision_rect()) 
+            )
+    
+        return tuple(intersecting_npcs)
+    
+    # Return every npc interaction rect currently intersecting the player's collision rectangle.
+    def get_npcs_intersecting_character_as_ineractions(self,
+                                           character: Character
+                                           ) -> tuple[NPC, ...]:
+
+        char_collision_rect = character.get_collision_rect()
+
+        intersecting_npcs = (
+            npc
+            for npc in self.npcs
+            if char_collision_rect.colliderect(npc.interaction_rect)
+            )
+    
+        return tuple(intersecting_npcs)
+
     # Return every world object intersecting the character's feet collision rectangle.
     # WorldObject.rect is an invisible gameplay hitbox, separate from its scenery art.
     def get_world_objs_intersecting_character(self,

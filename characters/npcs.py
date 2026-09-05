@@ -47,7 +47,7 @@ class NPC(Character):
 
         self.supports_interaction = supports_interaction
         self.is_interactable_on_spawn = is_interactable_on_spawn
-        self.is_currently_interactable: bool | None = None
+        self.is_currently_interactable = False
 
     # Place this NPC at its authored initial location. Callers may override the initial
     # direction, but deciding whether to spawn now remains outside this method.
