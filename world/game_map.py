@@ -136,6 +136,8 @@ class GameMap:
                                               display_name="Traveling Vendor",
                                               scaffold=TRAVELING_VENDOR,
                                               npc_type=NPCType.TRAVELING_VENDOR,
+                                              is_interactable_on_spawn=True,
+                                              supports_interaction=True,
                                               spawn_on_map_load=spawn_on_map_load,
                                               initial_x_spawn=obj.x,
                                               initial_y_spawn=obj.y)

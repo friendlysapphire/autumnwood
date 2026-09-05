@@ -21,6 +21,8 @@ class NPC(Character):
                  display_name: str,
                  scaffold: CharacterScaffold,
                  npc_type: NPCType,
+                 supports_interaction: bool,
+                 is_interactable_on_spawn: bool,
                  spawn_on_map_load: bool,
                  initial_x_spawn: float,
                  initial_y_spawn: float,
@@ -43,6 +45,10 @@ class NPC(Character):
 
         self.spawn_on_map_load = spawn_on_map_load
 
+        self.supports_interaction = supports_interaction
+        self.is_interactable_on_spawn = is_interactable_on_spawn
+        self.is_currently_interactable: bool | None = None
+
     # Place this NPC at its authored initial location. Callers may override the initial
     # direction, but deciding whether to spawn now remains outside this method.
     def spawn_from_initial_map_placement(self, 
@@ -55,6 +61,8 @@ class NPC(Character):
 
         if direction_y is not None:
             self.direction_y = direction_y
+
+        self.is_currently_interactable = self.is_interactable_on_spawn
 
         super().spawn(self.initial_x_spawn_loc,
                       self.initial_y_spawn_loc,
@@ -80,5 +88,5 @@ class NPC(Character):
         height = npc_sprite_full_height - self.scaffold.visible_top_offset - self.scaffold.visible_bottom_offset
 
         # expand equal amounts in all directions
-        return pygame.Rect(left - 25, top - 25, width + 50, height + 50)
+        return pygame.Rect(left - 30, top - 30, width + 60, height + 60)
 
