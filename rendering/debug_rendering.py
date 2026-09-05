@@ -46,14 +46,21 @@ def draw_debug_overlays(*,
         pygame.draw.rect(screen, "mediumseagreen", camera_adjusted_rect, width=2)
     
     for npc in current_map.npcs:
-        npc_rect = npc.interaction_rect
-        camera_adjusted_rect = npc_rect.move(camera_screen_offset_x, camera_screen_offset_y)
-        pygame.draw.rect(screen, "gold4", camera_adjusted_rect, width=2)
+        if npc.spawned:
+            # draw npc's collision rect
+            npc_rect = npc.get_collision_rect()
+            camera_adjusted_rect = npc_rect.move(camera_screen_offset_x, camera_screen_offset_y)
+            pygame.draw.rect(screen, "gold", camera_adjusted_rect, width=2)
 
-        npc_rect = npc.get_collision_rect()
-        camera_adjusted_rect = npc_rect.move(camera_screen_offset_x, camera_screen_offset_y)
-        pygame.draw.rect(screen, "gold", camera_adjusted_rect, width=2)
-
+            # draw npcs current interaction rect, if applicable
+            # note: no rect will be drawn at all if NPC is not currently interactable,
+            # which mixes npc (a) doesn't support interaction at all and (b) supports interaction but game
+            # isn't in a state where interaction is possible for this npc.
+            # TODO: consider drawing both but distunguishing by color or width of rect?
+            if npc.is_currently_interactable:
+                npc_rect = npc.interaction_rect
+                camera_adjusted_rect = npc_rect.move(camera_screen_offset_x, camera_screen_offset_y)
+                pygame.draw.rect(screen, "gold4", camera_adjusted_rect, width=2)
         
     # Shift the player's collision rectangle into screen coordinates for debug drawing.
     base_player_crect = player.get_collision_rect()
