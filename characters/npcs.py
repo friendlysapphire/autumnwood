@@ -62,7 +62,12 @@ class NPC(Character):
         if direction_y is not None:
             self.direction_y = direction_y
 
-        self.is_currently_interactable = self.is_interactable_on_spawn
+        # TODO if suppoerts_interaction is false and it wants to be interactable on spawn, 
+        # this is probably a bug and we should fail loudly, not silently correct it
+        if self.supports_interaction:
+            self.is_currently_interactable = self.is_interactable_on_spawn
+        else:
+            self.is_currently_interactable = False
 
         super().spawn(self.initial_x_spawn_loc,
                       self.initial_y_spawn_loc,

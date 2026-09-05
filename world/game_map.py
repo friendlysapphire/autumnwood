@@ -59,8 +59,9 @@ class GameMap:
     
         return tuple(intersecting_regions)
 
-    # Return every npc collision rect currently intersecting the player's collision rectangle.
-    def get_npcs_intersecting_character_as_collisions(self,
+    
+    # Return every currently interactable NPC whose interaction rect intersects character 
+    def get_interactable_npcs_intersecting_character(self,
                                            character: Character
                                            ) -> tuple[NPC, ...]:
 
@@ -69,22 +70,8 @@ class GameMap:
         intersecting_npcs = (
             npc
             for npc in self.npcs
-            if npc.spawned and char_collision_rect.colliderect(npc.get_collision_rect()) 
-            )
-    
-        return tuple(intersecting_npcs)
-    
-    # Return every npc interaction rect currently intersecting the player's collision rectangle.
-    def get_npcs_intersecting_character_as_ineractions(self,
-                                           character: Character
-                                           ) -> tuple[NPC, ...]:
-
-        char_collision_rect = character.get_collision_rect()
-
-        intersecting_npcs = (
-            npc
-            for npc in self.npcs
-            if char_collision_rect.colliderect(npc.interaction_rect)
+            if npc.is_currently_interactable
+            and char_collision_rect.colliderect(npc.interaction_rect) 
             )
     
         return tuple(intersecting_npcs)
