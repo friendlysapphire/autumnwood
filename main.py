@@ -13,7 +13,7 @@ from rendering.map_render import draw_map
 from world.game_map import GameMap
 from world.movement import update_character_position
 from world.region_effects import  MapTransitionRegionEffect, SpeedRegionEffect, get_active_region_effects
-from world.world_object import AppleTree
+from world.world_object import AppleTree, WorldObject
 
 
 WINDOW_WIDTH = 960
@@ -31,6 +31,47 @@ BASE_MAP_PATH = MAPS_PATH / "testmap2.tmx"
 BEGIN_GAME_SPAWN_NAME = "player_start"
 
 # Select one NPC from the interaction candidates by closest; return None when no NPC is in range.
+def get_closest_world_object(character: Character, 
+                             objs: tuple[WorldObject, ...]) -> WorldObject | None:
+    
+    interacting_obj: WorldObject | None = None
+
+    if len(objs) == 1:
+        interacting_obj = objs[0]
+
+    elif len(objs) > 1:
+        # TODO: maybe add in the notion of which direction we're facing to this someday
+        # if there are multiple NPCs, interact with the closest
+        
+        index_with_closest = 0
+
+        # TODO: i think i could do this with min(), key= and a lambda.
+        # figure it out then decide if the code is easier to understand that way or current way
+
+        player_location_as_vector = pygame.math.Vector2(character.get_collision_rect().center)
+        first_idx_loc_as_vector = pygame.math.Vector2(objs[0].rect.center)
+
+        # Compare squared distances: nearest ordering is unchanged, without calculating square roots.
+        closest_distance = pygame.math.Vector2.distance_squared_to(player_location_as_vector,
+                                                                    first_idx_loc_as_vector)
+
+        for index, obj in enumerate(objs):
+            if index == 0:
+                continue
+
+            obj_center = pygame.math.Vector2(obj.rect.center)
+            distance = pygame.math.Vector2.distance_squared_to(player_location_as_vector,
+                                                                obj_center)
+            if distance < closest_distance:
+                index_with_closest = index
+                closest_distance = distance
+
+        interacting_obj = objs[index_with_closest]
+
+    return interacting_obj
+
+
+# Select one NPC from the interaction candidates by closest; return None when no NPC is in range.
 def get_closest_npc(character: Character, 
                     npcs: tuple[NPC, ...]) -> NPC | None:
     
@@ -44,6 +85,9 @@ def get_closest_npc(character: Character,
         # if there are multiple NPCs, interact with the closest
         
         index_with_closest = 0
+
+        # TODO: i think i could do this with min(), key= and a lambda.
+        # figure it out then decide if the code is easier to understand that way or current way
 
         player_location_as_vector = pygame.math.Vector2(character.get_collision_rect().center)
         first_idx_loc_as_vector = pygame.math.Vector2(npcs[0].get_collision_rect().center)
@@ -144,23 +188,55 @@ def main() -> None:
 
                             # world objects
                             intersecting_world_objects = current_map.get_world_objs_intersecting_character(player)
+                            closest_world_object = get_closest_world_object(player, intersecting_world_objects)
 
-                            # process each world object intersecting w/ our player
-                            for wobj in intersecting_world_objects:
+                            # NPCs
+                            intersecting_npcs = current_map.get_interactable_npcs_intersecting_character(player)
+                            closest_npc = get_closest_npc(player, intersecting_npcs)
 
-                                if isinstance(wobj, AppleTree):
+                            print(f"world object: {closest_world_object}")
+                            print(f"npc: {closest_npc}")
+
+                            if closest_npc and not closest_world_object:
+                                # interact w the closest npc, there's no simultaneous world object interaction 
+                                print(f"interacting with {closest_npc.name}, {closest_npc.display_name}")
+
+                            elif closest_world_object and not closest_npc:
+                                # interact w the closest wobj, there's no simultaneous npc interaction
+                                if isinstance(closest_world_object, AppleTree):
+
                                     note = GameNotification("You interacted with an Apple Tree!",
                                                             GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
 
                                     notification_panel.set_notification(note)
 
-                            # NPCs
-                            npcs = current_map.get_interactable_npcs_intersecting_character(player)
-                            interacting_npc = get_closest_npc(player, npcs)
+                            elif closest_world_object and closest_npc:
+                                # player is within a world object and an interactable npc rect, only interact with the
+                                # closest
+                                player_loc_as_vector = pygame.math.Vector2(player.get_collision_rect().center)
 
-                            if interacting_npc is not None:
-                                print(f"interacting with {interacting_npc.name}, {interacting_npc.display_name}")
+                                wobj_center_vector = pygame.math.Vector2(closest_world_object.rect.center)
+                                npc_center_vector = pygame.math.Vector2(closest_npc.get_collision_rect().center)
 
+                                wobj_distance = pygame.math.Vector2.distance_squared_to(player_loc_as_vector,
+                                                                                        wobj_center_vector)
+
+                                npc_distance = pygame.math.Vector2.distance_squared_to(player_loc_as_vector,
+                                                                                       npc_center_vector)
+
+                                if wobj_distance <= npc_distance:
+                                    #TODO IMPORTANT: DON'T DUPLICATE THIS CODE
+                                    # interact w the closest wobj, there's no simultaneous npc interaction
+                                    if isinstance(closest_world_object, AppleTree):
+
+                                        note = GameNotification("You interacted with an Apple Tree!",
+                                                                GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
+
+                                        notification_panel.set_notification(note)
+                                else:
+                                    # interact w the closest npc, there's no simultaneous world object interaction 
+                                    print(f"interacting with {closest_npc.name}, {closest_npc.display_name}")
+    
         # Clear the previous frame before drawing the map again.
         screen.fill("black")
 
