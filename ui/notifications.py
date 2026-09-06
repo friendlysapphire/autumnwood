@@ -89,6 +89,9 @@ class NotificationPanel:
         if self.current_notification is not None:
             self._draw()
 
+    def force_clear_notification(self) -> None:
+        self.current_notification = None
+
     def notify_move_attempted(self) -> None:
 
         if (self.current_notification is not None and 

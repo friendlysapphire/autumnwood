@@ -45,12 +45,15 @@ class NPC(Character):
 
         self.spawn_on_map_load = spawn_on_map_load
 
+        # An NPC cannot become interactable on spawn unless it supports interaction at all.
         if supports_interaction is False and is_interactable_on_spawn is True:
             raise ValueError(f" NPC: {name}, {display_name} can't NOT support interaction and also be interactable on spawn.")
-        
+
+        # Set the capability before using the interaction-state setter, which validates against it.
         self.supports_interaction = supports_interaction
         self.is_interactable_on_spawn = is_interactable_on_spawn
-        self.is_currently_interactable = False
+        # leading _ because we're using property getter and setter below for validation
+        self._is_currently_interactable = False
 
     # Place this NPC at its authored initial location. Callers may override the initial
     # direction, but deciding whether to spawn now remains outside this method.
@@ -65,10 +68,8 @@ class NPC(Character):
         if direction_y is not None:
             self.direction_y = direction_y
 
-        if self.supports_interaction:
-            self.is_currently_interactable = self.is_interactable_on_spawn
-        else:
-            self.is_currently_interactable = False
+        # Each spawn restores this NPC's map-authored initial interaction state.
+        self.is_currently_interactable = self.is_interactable_on_spawn
 
         super().spawn(self.initial_x_spawn_loc,
                       self.initial_y_spawn_loc,
@@ -76,8 +77,26 @@ class NPC(Character):
                       self.direction_y)
 
     @property
-    def interaction_rect(self) -> pygame.Rect:
+    def is_currently_interactable(self) -> bool:
+        return self._is_currently_interactable
 
+    @is_currently_interactable.setter
+    def is_currently_interactable(self, interactable_val: bool) -> None:
+
+        if self.supports_interaction is False and interactable_val is True:
+            raise ValueError(f"NPC {self.display_name}, {self.name} does not support interaction;"
+                             " can't set self.is_currently_interactable to true.")
+
+        self._is_currently_interactable = interactable_val
+
+    # returns interaction rect for NPCs that support interaction (whether or not the NPC is currently interactable)
+    # returns None if NPC does not support interaction at all
+    @property
+    def interaction_rect(self) -> pygame.Rect | None:
+
+        if self.supports_interaction is False:
+            return None
+        
         if not self.spawned:
             raise ValueError(f"NPC {self.name}, {self.display_name} has no interaction rect beccause it's not spawned.")
 
@@ -85,7 +104,7 @@ class NPC(Character):
         top = self.world_y + self.scaffold.visible_top_offset
         left = self.world_x + self.scaffold.visible_left_offset
 
-        # get the size of the sprite rect, 
+        # Derive each visible dimensions
         npc_current_frame = self.scaffold.sprite_animation_rects.get(self._current_animation_state)[self._current_frame_index]
         npc_sprite_full_width = npc_current_frame.width
         npc_sprite_full_height = npc_current_frame.height
@@ -93,7 +112,6 @@ class NPC(Character):
         width = npc_sprite_full_width - self.scaffold.visible_left_offset - self.scaffold.visible_right_offset
         height = npc_sprite_full_height - self.scaffold.visible_top_offset - self.scaffold.visible_bottom_offset
 
-        # expand equal amounts in all directions
+        # Pad the visible bounds evenly to create a talk range, not a physical collision box.
         # TODO: make customizable?
         return pygame.Rect(left - 30, top - 30, width + 60, height + 60)
-
