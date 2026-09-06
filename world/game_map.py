@@ -151,6 +151,7 @@ class GameMap:
                         # feet-center placement. Delayed NPCs opt out of only the map-load spawn.
                         npc_type = obj.properties.get("character_type")
 
+                        # get map-defined npc attributes
                         spawn_on_map_load = obj.properties.get("spawn_on_map_load", True)
   
 
@@ -170,7 +171,7 @@ class GameMap:
                                               initial_y_spawn=obj.y)
                                 
                                 npcs_list.append(vendor1)
-                                print(obj.properties)
+                                # print(obj.properties)
 
                             case _:
                                 raise KeyError(

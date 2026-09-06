@@ -5,6 +5,7 @@ import pygame
 from characters.animation_state import AnimationState
 from characters.character import Character
 from characters.character_scaffolds import ELF_MAGE
+from characters.npcs import NPC
 from ui.notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
 from rendering.camera import get_clamped_camera_position
 from rendering.debug_rendering import draw_debug_overlays
@@ -29,6 +30,44 @@ BASE_MAP_PATH = MAPS_PATH / "testmap2.tmx"
 
 BEGIN_GAME_SPAWN_NAME = "player_start"
 
+# Select one NPC from the interaction candidates by closest; return None when no NPC is in range.
+def get_closest_npc(character: Character, 
+                    npcs: tuple[NPC, ...]) -> NPC | None:
+    
+    interacting_npc: NPC | None = None
+
+    if len(npcs) == 1:
+        interacting_npc = npcs[0]
+
+    elif len(npcs) > 1:
+        # TODO: maybe add in the notion of which direction we're facing to this someday
+        # if there are multiple NPCs, interact with the closest
+        
+        index_with_closest = 0
+
+        player_location_as_vector = pygame.math.Vector2(character.get_collision_rect().center)
+        first_idx_loc_as_vector = pygame.math.Vector2(npcs[0].get_collision_rect().center)
+
+        # Compare squared distances: nearest ordering is unchanged, without calculating square roots.
+        closest_distance = pygame.math.Vector2.distance_squared_to(player_location_as_vector,
+                                                                    first_idx_loc_as_vector)
+
+        for index, npc in enumerate(npcs):
+            if index == 0:
+                continue
+
+            npc_center = pygame.math.Vector2(npc.get_collision_rect().center)
+            distance = pygame.math.Vector2.distance_squared_to(player_location_as_vector,
+                                                                npc_center)
+            if distance < closest_distance:
+                index_with_closest = index
+                closest_distance = distance
+
+        interacting_npc = npcs[index_with_closest]
+
+    return interacting_npc
+
+    
 def main() -> None:
     # Set up Pygame and create the game window.
     pygame.init()
@@ -97,9 +136,14 @@ def main() -> None:
                         case pygame.K_BACKQUOTE:
                             show_map_debug_features = not show_map_debug_features
 
-                        # E examines/interacts with world objects currently overlapping the player.
-                        case pygame.K_e:  
-                            intersecting_world_objects = current_map.get_world_objs_intersecting_character(character=player)
+                        # E examines/interacts with world objects & NPCs currently overlapping the player.
+                        case pygame.K_e: 
+
+                            # TODO: resolve one target across NPC and world-object candidates before applying an interaction.
+                            # Keep an active dialogue from being interrupted by a new E-key target selection.
+
+                            # world objects
+                            intersecting_world_objects = current_map.get_world_objs_intersecting_character(player)
 
                             # process each world object intersecting w/ our player
                             for wobj in intersecting_world_objects:
@@ -109,6 +153,13 @@ def main() -> None:
                                                             GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
 
                                     notification_panel.set_notification(note)
+
+                            # NPCs
+                            npcs = current_map.get_interactable_npcs_intersecting_character(player)
+                            interacting_npc = get_closest_npc(player, npcs)
+
+                            if interacting_npc is not None:
+                                print(f"interacting with {interacting_npc.name}, {interacting_npc.display_name}")
 
         # Clear the previous frame before drawing the map again.
         screen.fill("black")
@@ -211,16 +262,15 @@ def main() -> None:
         screen.blit(player.sprite, (player_screen_x, player_screen_y))
 
         # Advance and draw only NPCs that currently exist in this map's runtime world.
-        for npc in current_map.npcs:
+        for npc in current_map.spawned_npcs:
 
-            if npc.spawned:
-                # Advance the current animation based on elapsed frame time.
-                npc.update_sprite_animation(delta_secs)
-        
-            # Convert this NPC's world position to screen coordinates and draw its sprite.
-                npc_screen_x = round(npc.world_x - camera_x)
-                npc_screen_y = round(npc.world_y - camera_y)
-                screen.blit(npc.sprite, (npc_screen_x, npc_screen_y))
+            # Advance the current animation based on elapsed frame time.
+            npc.update_sprite_animation(delta_secs)
+    
+        # Convert this NPC's world position to screen coordinates and draw its sprite.
+            npc_screen_x = round(npc.world_x - camera_x)
+            npc_screen_y = round(npc.world_y - camera_y)
+            screen.blit(npc.sprite, (npc_screen_x, npc_screen_y))
 
 
         # Advance notification lifecycle and draw the panel above the completed world scene.
