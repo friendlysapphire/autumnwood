@@ -45,6 +45,9 @@ class NPC(Character):
 
         self.spawn_on_map_load = spawn_on_map_load
 
+        if supports_interaction is False and is_interactable_on_spawn is True:
+            raise ValueError(f" NPC: {name}, {display_name} can't NOT support interaction and also be interactable on spawn.")
+        
         self.supports_interaction = supports_interaction
         self.is_interactable_on_spawn = is_interactable_on_spawn
         self.is_currently_interactable = False
@@ -62,8 +65,6 @@ class NPC(Character):
         if direction_y is not None:
             self.direction_y = direction_y
 
-        # TODO if suppoerts_interaction is false and it wants to be interactable on spawn, 
-        # this is probably a bug and we should fail loudly, not silently correct it
         if self.supports_interaction:
             self.is_currently_interactable = self.is_interactable_on_spawn
         else:
@@ -85,13 +86,14 @@ class NPC(Character):
         left = self.world_x + self.scaffold.visible_left_offset
 
         # get the size of the sprite rect, 
-        npc_idle_frame = self.scaffold.sprite_animation_rects.get(AnimationState.IDLE)[0]
-        npc_sprite_full_width = npc_idle_frame.width
-        npc_sprite_full_height = npc_idle_frame.height
+        npc_current_frame = self.scaffold.sprite_animation_rects.get(self._current_animation_state)[self._current_frame_index]
+        npc_sprite_full_width = npc_current_frame.width
+        npc_sprite_full_height = npc_current_frame.height
 
         width = npc_sprite_full_width - self.scaffold.visible_left_offset - self.scaffold.visible_right_offset
         height = npc_sprite_full_height - self.scaffold.visible_top_offset - self.scaffold.visible_bottom_offset
 
         # expand equal amounts in all directions
+        # TODO: make customizable?
         return pygame.Rect(left - 30, top - 30, width + 60, height + 60)
 

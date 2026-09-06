@@ -59,7 +59,6 @@ class GameMap:
     
         return tuple(intersecting_regions)
 
-    
     # Return every currently interactable NPC whose interaction rect intersects character 
     def get_interactable_npcs_intersecting_character(self,
                                            character: Character
@@ -75,6 +74,17 @@ class GameMap:
             )
     
         return tuple(intersecting_npcs)
+
+    # Return all currently spawned NPCs
+    @property
+    def spawned_npcs(self) -> tuple[NPC, ...]:
+
+        spawned = (npc
+                   for npc in self.npcs
+                   if npc.spawned
+                   )
+        
+        return tuple(spawned)
 
     # Return every world object intersecting the character's feet collision rectangle.
     # WorldObject.rect is an invisible gameplay hitbox, separate from its scenery art.
