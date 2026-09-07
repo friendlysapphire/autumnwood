@@ -100,11 +100,11 @@ class NPC(Character):
         if not self.spawned:
             raise ValueError(f"NPC {self.name}, {self.display_name} has no interaction rect beccause it's not spawned.")
 
-        # calculate the actual visible sillouette of the sprite 
+        # Calculate the actual visible silhouette of the sprite.
         top = self.world_y + self.scaffold.visible_top_offset
         left = self.world_x + self.scaffold.visible_left_offset
 
-        # Derive each visible dimensions
+        # Derive each visible dimension from the current animation frame.
         npc_current_frame = self.scaffold.sprite_animation_rects.get(self._current_animation_state)[self._current_frame_index]
         npc_sprite_full_width = npc_current_frame.width
         npc_sprite_full_height = npc_current_frame.height

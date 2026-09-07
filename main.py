@@ -34,6 +34,8 @@ BEGIN_GAME_SPAWN_NAME = "player_start"
 
 
 
+# Choose one target across interaction types after GameMap has already filtered each
+# type to nearby, eligible candidates.
 def get_closest_interaction_target(character: Character,
                                    *,
                                    nearby_world_objects: Sequence[WorldObject],
@@ -61,6 +63,8 @@ def get_closest_interaction_target(character: Character,
         npc_distance = pygame.math.Vector2.distance_squared_to(player_loc_as_vector,
                                                                 npc_center_vector)
 
+        # Use each target's physical/body center for selection rather than its larger
+        # interaction range. Equal distances deliberately prefer the World Object.
         if wobj_distance <= npc_distance:
             return closest_wobj
         else:
@@ -77,7 +81,7 @@ def get_closest_world_object(character: Character,
 
     elif len(objs) > 1:
         # TODO: maybe add in the notion of which direction we're facing to this someday
-        # if there are multiple NPCs, interact with the closest
+        # If there are multiple World Objects, interact with the closest.
         
         index_with_closest = 0
 
