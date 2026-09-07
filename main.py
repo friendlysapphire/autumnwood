@@ -64,7 +64,8 @@ def get_closest_interaction_target(character: Character,
                                                                 npc_center_vector)
 
         # Use each target's physical/body center for selection rather than its larger
-        # interaction range. Equal distances deliberately prefer the World Object.
+        # interaction range. Equal distances deliberately prefer the World Object (for no good reason 
+        # othr than I needed to make a decision).)
         if wobj_distance <= npc_distance:
             return closest_wobj
         else:
@@ -151,6 +152,21 @@ def get_closest_npc(character: Character,
 
     return interacting_npc
 
+def begin_interaction(character: Character,
+                      target: NPC | WorldObject,
+                      notification_panel: NotificationPanel
+                      ) -> None:
+                            
+    if isinstance(target, AppleTree):
+
+        note = GameNotification("You interacted with an Apple Tree!",
+                                    GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
+
+        notification_panel.set_notification(note)
+
+    elif isinstance(target,NPC):
+        print(f"interacting with NPC: {target.name}, {target.display_name}")        
+
     
 def main() -> None:
     # Set up Pygame and create the game window.
@@ -228,18 +244,12 @@ def main() -> None:
                             target = get_closest_interaction_target(player,
                                                                     nearby_npcs=nearby_npcs,
                                                                     nearby_world_objects=nearby_world_objects)
+
+                            if target is not None:
+                                begin_interaction(player, 
+                                                  target,
+                                                  notification_panel)
                             
-                            if isinstance(target, AppleTree):
-                                # interact w the closest wobj, there's no simultaneous npc interaction
-
-                                note = GameNotification("You interacted with an Apple Tree!",
-                                                            GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
-
-                                notification_panel.set_notification(note)
-
-                            elif isinstance(target,NPC):
-                                print(f"interacting with NPC: {target.name}, {target.display_name}")        
-    
         # Clear the previous frame before drawing the map again.
         screen.fill("black")
 
