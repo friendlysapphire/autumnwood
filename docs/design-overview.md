@@ -7,6 +7,9 @@ game.
 
 A separate guide, [Regions and Region Effects](regions-and-region-effects.md),
 covers the detailed checklist for adding new regions and region effects.
+Use [Map Authoring](map-authoring.md) for Tiled map work and
+[Characters and NPCs](characters-and-npcs.md) for NPC placement, dialogue,
+and new NPC types.
 
 ## Core design principles
 
@@ -86,11 +89,15 @@ object requires it rather than pre-built as a generic system.
 
 Point objects describing non-player characters that belong to this map.
 Each requires a `character_type` custom property so Python can select the
-appropriate character scaffold. `spawn_on_map_load` defaults to `true`;
-set it to `false` for an NPC that a future trigger should place later.
+appropriate character scaffold. Each also currently requires a
+player-facing `display_name` custom property. `spawn_on_map_load`
+defaults to `true`; set it to `false` for an NPC that a future trigger
+should place later.
 
-The point is the NPC's initial position. It does not need a separate
-entry on the `Spawns` layer.
+The built-in Tiled Name remains the NPC's internal identity. It may select
+an exact dialogue override; otherwise the NPC uses dialogue registered for
+its `NPCType`. The point is the NPC's initial position and does not need a
+separate entry on the `Spawns` layer.
 
 ### `Spawns`
 
@@ -130,6 +137,8 @@ Constructing a `GameMap` from a `.tmx` path currently:
 -   loads the Tiled map and referenced tile images
 -   converts Tiled gameplay metadata into runtime regions and world
     objects, and NPCs
+-   resolves each NPC's dialogue from an exact-name override or its
+    `NPCType` default
 -   calculates the map's pixel width and height
 
 Important public state currently includes:
@@ -151,6 +160,7 @@ Current examples:
 -   `get_player_spawn_coords()`
 -   `get_regions_intersecting_character()`
 -   `get_world_objs_intersecting_character()`
+-   `get_interactable_npcs_intersecting_character()`
 
 This is an important refactoring boundary: `GameMap` answers questions
 about the map, but does not need to interpret every gameplay consequence
@@ -189,7 +199,7 @@ World Objects / apple_tree
 -> AppleTree
 
 NPCs / traveling_vendor
--> NPC(scaffold=TRAVELING_VENDOR)
+-> NPC(scaffold=TRAVELING_VENDOR, display_name, dialogue script)
 ```
 
 The leading underscore marks this loader as an internal implementation
@@ -231,8 +241,9 @@ each value remains clear at the definition site.
 
 `NPC` is a `Character` with map-authored placement information such as
 its NPC type, initial location, and whether it should spawn when the map
-loads. `GameMap` loads that data; `main.py` applies the spawn policy when
-the initial map or a transition destination becomes current.
+loads. It also holds its resolved `DialogueScript`, when it has dialogue.
+`GameMap` loads that data; `main.py` applies the spawn policy when the
+initial map or a transition destination becomes current.
 
 ### Collision rectangle
 
@@ -425,12 +436,12 @@ Current first concrete object:
 Current interaction flow:
 
 ``` text
-Tiled World Objects object
--> GameMap loads WorldObject / AppleTree
--> player presses E
--> GameMap finds world objects intersecting the player's collision rectangle
--> main loop dispatches based on runtime object type
--> interaction creates a GameNotification
+player presses E while no dialogue is active
+-> GameMap finds nearby World Objects and interactable NPCs
+-> main selects one closest candidate across both collections
+-> main dispatches the selected runtime object type
+-> World Object interaction creates a GameNotification
+-> NPC interaction starts dialogue
 ```
 
 The current apple-tree interaction is intentionally simple. It proves
@@ -508,8 +519,28 @@ The current Pygame default font is temporary. Autumnwood should
 eventually ship its own suitable game font rather than depend on fonts
 installed on the player's system.
 
-The notification system is deliberately small. NPC dialogue will need its
-own advance behavior rather than being forced into notification policies.
+The notification system remains deliberately separate from NPC dialogue,
+which has persistent conversation state and explicit player controls.
+
+## NPC dialogue
+
+`DialogueScript` is immutable authored content: an ID and an ordered tuple
+of statements. `GameMap` first looks for an exact script registered under
+the NPC's internal Tiled Name, then falls back to the default registered
+for its `NPCType`. This lets special NPCs override dialogue without
+requiring every ordinary vendor to have a registry entry.
+
+`DialogPanel` owns the runtime conversation state: active/inactive status,
+speaking NPC, and current statement index. It renders a fixed bottom panel
+with the NPC display name, seven body rows, and control instructions.
+
+- `E` advances a linear conversation and closes it after the final statement.
+- `X` ends an active conversation early.
+- Active dialogue pauses player input and movement resolution.
+
+Automatic text wrapping, pagination, dialogue choices, and shop UI remain
+future work. Statements exceeding the seven available body rows currently
+raise an explicit error rather than overflowing the panel.
 
 ## Map loading and transitions
 
@@ -534,23 +565,24 @@ Python resolves them to `.tmx` files under the maps/resources path.
 The current frame flow is approximately:
 
 ``` text
-1. Read discrete Pygame events such as quit, debug toggle, and E interaction.
-2. Read held movement keys and set player direction / movement-attempt flags.
-3. Ask GameMap which regions intersect the player's current position.
-4. Translate those regions into active region effects.
-5. Collect pre-move effects such as SpeedModifiers.
-6. Calculate and validate proposed movement.
-7. Move the player when the proposed position is valid.
-8. Ask GameMap which regions intersect the new player position.
-9. Translate those regions into active region effects again.
-10. Process post-move effects such as map transitions.
-11. Select the animation state and apply notification dismissal tied to movement attempts.
-12. Calculate camera position.
-13. Draw the map.
-14. Advance and draw the player and any spawned NPCs.
-15. Update/draw any active game notification.
-16. Draw optional debug overlays.
-17. Flip the completed frame to the display.
+1. Read discrete Pygame events such as quit, debug toggle, and dialogue input.
+2. Advance or end active dialogue with E/X; otherwise let E resolve a world interaction.
+3. When no dialogue is active, read held movement keys and set player direction / movement-attempt flags.
+4. Ask GameMap which regions intersect the player's current position.
+5. Translate those regions into active region effects.
+6. Collect pre-move effects such as SpeedModifiers.
+7. Calculate and validate proposed movement.
+8. Move the player when the proposed position is valid.
+9. Ask GameMap which regions intersect the new player position.
+10. Translate those regions into active region effects again.
+11. Process post-move effects such as map transitions.
+12. Select the animation state and apply notification dismissal tied to movement attempts.
+13. Calculate camera position.
+14. Draw the map.
+15. Advance and draw the player and any spawned NPCs.
+16. Update/draw active notification and dialogue panels.
+17. Draw optional debug overlays.
+18. Flip the completed frame to the display.
 ```
 
 ### Movement validation
@@ -606,6 +638,7 @@ The overlay currently shows:
 -   different colors by region type
 -   world-object rectangles
 -   the player's collision rectangle
+-   NPC collision and interaction rectangles
 
 When a new `RegionType` is added, update the debug-color match so it can
 be visually verified on the map.
@@ -618,7 +651,7 @@ Refactoring is now happening incrementally rather than as a rewrite.
 The current source packages are:
 
 - `characters/` for character state, animation definitions, scaffolds,
-  and NPCs
+  NPC types, dialogue content, and NPCs
 - `world/` for loaded map state, regions/effects, world objects, and
   map-aware movement validation
 - `rendering/` for camera positioning, map drawing, and debug overlays
@@ -655,7 +688,14 @@ characters/character.py
     character-owned state and movement/animation calculations
 
 characters/npcs.py
-    a Character with map-authored initial placement and spawn policy
+    a Character with map-authored initial placement, spawn policy, and
+    resolved dialogue content
+
+characters/npc_dialogue.py
+    static dialogue scripts and exact-NPC/default-NPCType registries
+
+ui/dialog.py
+    active dialogue state and panel rendering
 
 main.py
     game-loop orchestration
@@ -677,7 +717,8 @@ movement / maps / camera
 -> basic notification UI
 -> refactor main into clearer runtime responsibilities
 -> first NPC map loading / spawning / rendering
--> NPC interaction + dialogue
+-> linear NPC dialogue panel and generic NPCType dialogue fallback
+-> dialogue choices and vendor interaction flow
 -> inventory as real interactions require it
 -> health / damage
 -> contextual traversal and blocking
@@ -697,8 +738,8 @@ Important roadmap notes:
     interacted with using E.
 -   A basic on-screen `GameNotification` pipeline works, including
     `ON_MOVE_ATTEMPT` and `TIMED` dismissal policies.
--   The main loop now loads and renders map-authored NPCs. The first
-    NPC's interaction and dialogue are the next content feature.
+-   Map-authored NPCs now support interaction and linear dialogue. Exact
+    NPC dialogue overrides fall back to default dialogue by `NPCType`.
 -   A fade-to-black / fade-in map transition effect is planned, but is
     not urgent.
 -   Y/depth-aware rendering for large props such as trees is a known
@@ -708,7 +749,8 @@ Important roadmap notes:
 -   The game should eventually ship its own font rather than depend on
     system fonts.
 -   Do not build NPC AI, pathfinding, or a generalized dialogue engine
-    before the first NPC interaction shows what is actually needed.
+    before dialogue choices or real vendor interactions show what is
+    actually needed.
 -   Do not build inventory, harvesting, respawn, or a generalized item
     system merely because the apple tree exists; add those when an
     actual interaction requires them.
