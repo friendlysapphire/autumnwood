@@ -110,7 +110,7 @@ class NotificationPanel:
 
             notification_surface = self.font.render(self.current_notification.text, True, "grey87")
             self.notification_panel.blit(notification_surface, (20,20)) 
-            self.screen.blit(self.notification_panel, (20, self.window_height - self.panel_height))
+            self.screen.blit(self.notification_panel, (20, (self.window_height - self.panel_height) - 5))
 
 
         
