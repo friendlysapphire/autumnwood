@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="60" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="8" nextobjectid="97">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="60" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="8" nextobjectid="98">
  <tileset firstgid="1" source="TileSnow.tsx"/>
  <tileset firstgid="133" source="TileCliff.tsx"/>
  <tileset firstgid="245" source="TreeAndStoneSprites.tsx"/>
@@ -159,10 +159,11 @@
   <object id="67" x="33.3333" y="1090.67" width="28" height="13.3333"/>
   <object id="95" x="1200" y="172" width="49.3333" height="29.3333"/>
  </objectgroup>
- <objectgroup id="7" name="NPCs" locked="1">
+ <objectgroup id="7" name="NPCs">
   <object id="96" name="traveling_vendor_01" x="853.333" y="253.333">
    <properties>
     <property name="character_type" value="traveling_vendor"/>
+    <property name="display_name" value="Traveling Vendor 1"/>
     <property name="spawn_on_map_load" type="bool" value="true"/>
    </properties>
    <point/>

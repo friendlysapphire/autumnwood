@@ -155,6 +155,12 @@ class GameMap:
 
                         # get map-defined npc attributes
                         spawn_on_map_load = obj.properties.get("spawn_on_map_load", True)
+
+                        # get custom field for display name, not having a display name is an error
+                        try:
+                            display_name = obj.properties["display_name"]
+                        except KeyError as e:
+                            raise KeyError(f"NPC {obj.name!r} at ({obj.x}, {obj.y}) is missing display_name.") from e
   
                         # Prefer an exact NPC dialogue override; ordinary NPCs fall back to the default
                         # script registered for their NPCType.
@@ -169,7 +175,7 @@ class GameMap:
                                 # visual and collision configuration.
 
                                 vendor1 = NPC(name=obj.name,
-                                              display_name="Traveling Vendor",
+                                              display_name=display_name,
                                               scaffold=TRAVELING_VENDOR,
                                               npc_type=NPCType.TRAVELING_VENDOR,
                                               is_interactable_on_spawn=True,
@@ -185,7 +191,7 @@ class GameMap:
 
                             case _:
                                 raise KeyError(
-                                f"NPC object at ({obj.x}, {obj.y}) needs a recognized "
+                                f"NPC {obj.name!r} at ({obj.x}, {obj.y}) needs a recognized "
                                 f"character_type: {obj.properties} from NPCType"
                             )
 
