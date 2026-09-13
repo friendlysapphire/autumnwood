@@ -5,11 +5,7 @@ import pygame
 from characters.character import Character, DirectionValue
 from characters.character_scaffolds import CharacterScaffold
 from characters.npc_dialogue import DialogueScript
-
-
-# Define the NPC types that map authors may select through the character_type property.
-class NPCType(StrEnum):
-    TRAVELING_VENDOR = "traveling_vendor"
+from characters.npc_type import NPCType
 
 
 # NPC adds map-authored identity and initial-placement data to Character.

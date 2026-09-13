@@ -53,6 +53,7 @@ class DialogPanel:
         if self.dialog_active is False:
             raise RuntimeError(f"There is no current dialog to advance.")
 
+        # Linear dialogue closes after its final statement rather than advancing past it.
         max_index = len(self.speaking_npc.dialog_info.statements) - 1
 
         if self.current_dialog_index < max_index:
@@ -81,6 +82,8 @@ class DialogPanel:
             # the panel regardless of the current statement's length.
             text += self.speaking_npc.dialog_info.statements[self.current_dialog_index]
 
+            # The header contributes the first newline; pad to seven separators before the
+            # footer so the panel always has seven body rows.
             num_newlines = text.count('\n')
             if num_newlines > 7:
                 # Statements exceeding seven body rows will need pagination; automatic

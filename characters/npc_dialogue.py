@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import StrEnum
 
+from characters.npc_type import NPCType
+
 
 # Identify exact NPCs through the name field authored in Tiled.
 class ExactNPC(StrEnum):
@@ -16,6 +18,7 @@ class DialogueScript:
 
 # the scripts
 
+# CUSTOM SCRIPTS BY CHARACTER INTERNAL NAME
 tv_01_statements: tuple[str, ...] = (
     "Welcome to my Shop!",
     "Statement 2"
@@ -25,9 +28,25 @@ tv_01 = DialogueScript(id=ExactNPC.TRAVELING_VENDOR_01,
                        statements=tv_01_statements)
 
 
-# Exact-NPC entries are custom dialogue overrides. NPCType-based default dialogue
-# will later be used as a fallback when an NPC has no entry in this registry.
+# DEFAULT SCRIPTS BY CHARACTER NPC TYPE (FALLBACKS WHEN NO CUSTOM DIALOG IS NEEDED)
+
+generic_map1_vendor_statements: tuple[str, ...] = (
+    "Welcome to my Shop!",
+    "Statement 2"
+)
+
+generic_map01_vendor = DialogueScript(id=NPCType.TRAVELING_VENDOR,
+                       statements=generic_map1_vendor_statements)
+
+
+
+# Exact-NPC entries override the default dialogue for their NPCType. NPCs with
+# no named entry resolve through DEFAULT_DIALOG_SCRIPTS_BY_TYPE.
 # TODO: when switch to python 3.15, make this a frozendict
-DIALOGUE_SCRIPTS: dict[ExactNPC: DialogueScript] = {
+DIALOGUE_SCRIPTS_BY_NAME: dict[ExactNPC: DialogueScript] = {
     ExactNPC.TRAVELING_VENDOR_01: tv_01
+}
+
+DEFAULT_DIALOG_SCRIPTS_BY_TYPE: dict[NPCType: DialogueScript] = {
+    NPCType.TRAVELING_VENDOR : generic_map01_vendor
 }

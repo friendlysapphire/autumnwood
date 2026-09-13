@@ -6,8 +6,9 @@ from pytmx.util_pygame import load_pygame
 
 from characters.character import Character
 from characters.character_scaffolds import TRAVELING_VENDOR
-from characters.npcs import NPC, NPCType
-from characters.npc_dialogue import DIALOGUE_SCRIPTS
+from characters.npcs import NPC
+from characters.npc_dialogue import DIALOGUE_SCRIPTS_BY_NAME, DEFAULT_DIALOG_SCRIPTS_BY_TYPE
+from characters.npc_type import NPCType
 from world.region import MapTransitionRegion, QuicksandRegion, Region, RegionType
 from world.world_object import AppleTree, WorldObject, WorldObjectType
 
@@ -155,16 +156,18 @@ class GameMap:
                         # get map-defined npc attributes
                         spawn_on_map_load = obj.properties.get("spawn_on_map_load", True)
   
-                        # Look up an exact per-NPC dialogue override. A future NPCType
-                        # default will provide fallback dialogue when no override exists.
-                        script = DIALOGUE_SCRIPTS.get(obj.name)
+                        # Prefer an exact NPC dialogue override; ordinary NPCs fall back to the default
+                        # script registered for their NPCType.
+                        script = DIALOGUE_SCRIPTS_BY_NAME.get(obj.name)
+                        if script is None:
+                            script = DEFAULT_DIALOG_SCRIPTS_BY_TYPE.get(npc_type)
 
                         match npc_type:
-
 
                             case NPCType.TRAVELING_VENDOR:
                                 # Map the authored type to the scaffold that defines this NPC's
                                 # visual and collision configuration.
+
                                 vendor1 = NPC(name=obj.name,
                                               display_name="Traveling Vendor",
                                               scaffold=TRAVELING_VENDOR,
