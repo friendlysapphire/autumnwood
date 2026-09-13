@@ -7,6 +7,7 @@ from pytmx.util_pygame import load_pygame
 from characters.character import Character
 from characters.character_scaffolds import TRAVELING_VENDOR
 from characters.npcs import NPC, NPCType
+from characters.npc_dialogue import DIALOGUE_SCRIPTS
 from world.region import MapTransitionRegion, QuicksandRegion, Region, RegionType
 from world.world_object import AppleTree, WorldObject, WorldObjectType
 
@@ -154,8 +155,12 @@ class GameMap:
                         # get map-defined npc attributes
                         spawn_on_map_load = obj.properties.get("spawn_on_map_load", True)
   
+                        # Look up an exact per-NPC dialogue override. A future NPCType
+                        # default will provide fallback dialogue when no override exists.
+                        script = DIALOGUE_SCRIPTS.get(obj.name)
 
                         match npc_type:
+
 
                             case NPCType.TRAVELING_VENDOR:
                                 # Map the authored type to the scaffold that defines this NPC's
@@ -168,7 +173,9 @@ class GameMap:
                                               supports_interaction=True,
                                               spawn_on_map_load=spawn_on_map_load,
                                               initial_x_spawn=obj.x,
-                                              initial_y_spawn=obj.y)
+                                              initial_y_spawn=obj.y,
+                                              dialog_info=script
+                                              )
                                 
                                 npcs_list.append(vendor1)
                                 # print(obj.properties)

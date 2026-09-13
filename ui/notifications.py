@@ -37,6 +37,7 @@ class NotificationPanel:
                  panel_width:int,
                  panel_height:int,
                  window_height: int,
+                 window_width: int,
                  alpha:int = 100,
                  font: pygame.font.Font | None = None
                  ) -> None:
@@ -44,6 +45,7 @@ class NotificationPanel:
         self.panel_width = panel_width
         self.panel_height = panel_height
         self.window_height = window_height
+        self.window_width = window_width
         self.panel_alpha = alpha
         self.screen = screen
 

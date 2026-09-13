@@ -2,8 +2,9 @@ from enum import StrEnum
 
 import pygame
 
-from characters.character import Character, DirectionValue, AnimationState
+from characters.character import Character, DirectionValue
 from characters.character_scaffolds import CharacterScaffold
+from characters.npc_dialogue import DialogueScript
 
 
 # Define the NPC types that map authors may select through the character_type property.
@@ -27,7 +28,8 @@ class NPC(Character):
                  initial_x_spawn: float,
                  initial_y_spawn: float,
                  initial_x_direction: DirectionValue = 0,
-                 initial_y_direction: DirectionValue = 0
+                 initial_y_direction: DirectionValue = 0,
+                 dialog_info: DialogueScript | None = None
                  ):
 
         super().__init__(name=name,
@@ -44,6 +46,8 @@ class NPC(Character):
         self.npc_type = npc_type
 
         self.spawn_on_map_load = spawn_on_map_load
+
+        self.dialog_info = dialog_info
 
         # An NPC cannot become interactable on spawn unless it supports interaction at all.
         if supports_interaction is False and is_interactable_on_spawn is True:

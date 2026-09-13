@@ -24,6 +24,9 @@ def is_proposed_player_move_valid(
         y_size=current_map.height,
     )
 
+    if not in_bounds:
+        return False
+
     player_collision_rect = char.get_collision_rect(proposed_x, proposed_y)
 
     # Check the proposed player collision box against regions that are not walkable by default.
