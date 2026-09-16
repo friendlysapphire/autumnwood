@@ -20,7 +20,7 @@ class DialogueScript:
 
 # CUSTOM SCRIPTS BY CHARACTER INTERNAL NAME
 tv_01_statements: tuple[str, ...] = (
-    "Welcome to my Shop!",
+    "Welcome to my Shop!! Welcome to my Shop!! Welcome to my Shop!! Welcome to my Shop!! Welcome to my Shop!! Welcome to my Shop!!",
     "Statement 2"
 )
 
