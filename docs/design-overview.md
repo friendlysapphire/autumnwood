@@ -631,6 +631,14 @@ Each character is configured with sprite-sheet rectangles for the
 animation states it supports. If a requested animation is unavailable,
 the character currently falls back to idle.
 
+The current scaffold supplies one sprite-sheet file for every animation
+state. This matches the PixelWorld assets, whose idle and walking frames share
+one image. Some Epic RPG assets instead store each behavior in a separate
+image; the traveling vendor currently has only its idle sheet configured and
+therefore uses idle frames while moving. When a moving Epic RPG NPC needs its
+own behavior art, extend the scaffold/character design so each animation state
+can select its own image source as well as its frame rectangles.
+
 ## Debug overlay
 
 The backquote key toggles map-debug rendering.
@@ -645,6 +653,32 @@ The overlay currently shows:
 
 When a new `RegionType` is added, update the debug-color match so it can
 be visually verified on the map.
+
+## Known limitations and deferred work
+
+These are intentional current boundaries, not requirements to build generic
+systems before gameplay needs them.
+
+- The window is fixed at 960x640. Resizing would require a deliberate layout
+  and scaling policy for panels, text, and fixed-size UI artwork.
+- Dialogue wrapping uses a character-count approximation rather than font
+  pixel measurements. A single word wider than the current limit raises an
+  explicit error until wrapping gains a policy for oversized words.
+- Map rendering currently visits every tile in every visible tile layer each
+  frame. Pygame clips offscreen blits, but the game should eventually iterate
+  only the camera-visible tile range when map scale or profiling warrants it.
+- Interaction selection is proximity-only. When multiple eligible targets are
+  in range, the game chooses the closest; player-facing direction does not yet
+  affect that choice.
+- NPC interaction range currently uses the same fixed 30-pixel padding around
+  every NPC's visible sprite bounds. Make it configurable when differing NPC
+  sizes or interaction styles require it.
+- `WorldObject` currently represents static map-authored interactions. Add
+  runtime state for doors, pickups, drops, respawning objects, or changing art
+  only when a real interaction requires it.
+- Characters currently load all animation frames from one sprite-sheet file.
+  Supporting asset packs with separate files per animation state is deferred
+  until a chosen character needs those frames.
 
 ## Current refactor
 
@@ -721,8 +755,10 @@ movement / maps / camera
 -> refactor main into clearer runtime responsibilities
 -> first NPC map loading / spawning / rendering
 -> linear NPC dialogue panel with wrapping/pagination and generic NPCType dialogue fallback
+-> per-animation-state sprite sources when a moving Epic RPG character needs them
 -> dialogue choices and vendor interaction flow
 -> inventory as real interactions require it
+-> stateful world objects and pickups when an interaction needs runtime state
 -> health / damage
 -> contextual traversal and blocking
 -> combat / enemies
@@ -748,8 +784,6 @@ Important roadmap notes:
     not urgent.
 -   Y/depth-aware rendering for large props such as trees is a known
     later presentation task.
--   Window resizing and resolution handling are not implemented yet; the
-    current window is fixed-size.
 -   The game should eventually ship its own font rather than depend on
     system fonts.
 -   Do not build NPC AI, pathfinding, or a generalized dialogue engine
@@ -758,9 +792,6 @@ Important roadmap notes:
 -   Do not build inventory, harvesting, respawn, or a generalized item
     system merely because the apple tree exists; add those when an
     actual interaction requires them.
--   When an object first needs to change state (for example, an
-    unlocked door or collected item), add the smallest runtime-state
-    model that supports that real interaction.
 -   Do not build the final large overworld yet.
 -   Near the content phase, prototype overworld scale with crude maps
     and actual travel time before committing to final dimensions.
