@@ -613,6 +613,14 @@ After player movement:
 -   clamp it to the current `GameMap` bounds
 -   subtract the camera position from world coordinates when drawing
 
+The world-to-screen conversion is `screen_position = world_position -
+camera_position`. The camera position therefore defines a visible world
+rectangle beginning at `(camera_x, camera_y)` with the window's width and
+height. The current renderer still tries to blit every map tile at its
+camera-adjusted screen position; Pygame writes only pixels that fall within
+the window surface. A later optimization can use that visible rectangle to
+skip offscreen tiles before calling `blit`.
+
 Debug rectangles are shifted into screen coordinates with the same
 camera offset.
 
