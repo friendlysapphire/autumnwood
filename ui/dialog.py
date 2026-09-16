@@ -27,9 +27,11 @@ class DialogPanel:
         self.panel_alpha = alpha
         self.screen = screen
 
-        # This temporary character-count limit approximates the body width. Replace it
-        # with font/pixel measurement when dialogue needs proportional-font accuracy.
+        # This temporary character-count limit approximates the body width. Keep it below
+        # the visible capacity so continuation pages can append "..." without re-wrapping.
+        # Replace it with font/pixel measurement when dialogue needs proportional-font accuracy.
         self.max_chars = 105
+
 
         # The speaker header plus seven dialogue rows fit above the fixed footer.
         self.max_lines_above_footer = 8
@@ -39,6 +41,7 @@ class DialogPanel:
         self.dialog_active: bool = False
         self.current_page_index:int = 0
         self.speaking_npc: NPC | None = None
+        # Runtime display pages generated from the speaking NPC's authored dialogue statements.
         self.npc_dialogue_statements: list[str] | None = None
 
         if font is None:
@@ -58,12 +61,14 @@ class DialogPanel:
         self.speaking_npc = speaking_npc
         self.npc_dialogue_statements = []
 
-        # Build runtime wrapped pages without changing the NPC's authored dialogue script.
+        # Keep the NPC's authored dialogue script unchanged; wrapping and pagination build
+        # a separate runtime conversation list.
         unwrapped = list(self.speaking_npc.dialog_info.statements)
         for statement in unwrapped:
             self.npc_dialogue_statements.append(self._wrap(statement))
 
         pages = []
+        # Flatten wrapped statements into display pages while preserving conversation order.
         for statement in self.npc_dialogue_statements:
             pages.extend(self._paginate(statement, self.max_newline_chars_above_footer))
 
@@ -119,10 +124,12 @@ class DialogPanel:
     # INTERNAL METHODS
 
     # Split a wrapped statement into page strings containing at most max_lines rendered rows.
+    # Full pages ending before the statement does are marked with "...".
     def _paginate(self, statement: str, max_lines: int) -> list[str]:
 
-        paginated:str = []
+        paginated: list[str] = []
 
+        # _wrap has already converted this statement into rendered rows separated by newlines.
         strs = statement.split('\n')
 
         if len(strs) <= max_lines:
@@ -130,15 +137,22 @@ class DialogPanel:
 
         else:
 
-            times_no_remainder = len(strs) // max_lines
+            # Build complete pages first; any remaining rows become one final partial page.
+            full_pages = len(strs) // max_lines
 
-            for _ in range(times_no_remainder):
-                page: str = []
+            for _ in range(full_pages):
+                page: list[str] = []
                 for _ in range(max_lines):
                     page.append(strs.pop(0))
+
+                if strs:
+                    # Mark the final row when another page from this statement follows.
+                    page[-1] += "..."
+
                 paginated.append('\n'.join(page))
 
             if strs:
+                # Append the remaining rows as the final partial page.
                 paginated.append('\n'.join(strs))
 
         return paginated
@@ -149,6 +163,7 @@ class DialogPanel:
 
         final_list: list[str] = []
 
+        # Consume words in order, starting a new row only when the next word will not fit.
         word_queue = s.split(' ')
         tmp: str = ""
 
@@ -170,6 +185,7 @@ class DialogPanel:
                     tmp = word_queue.pop(0) + " "
 
                 if not word_queue and tmp:
+                    # Flush the final row after consuming the last word.
                     final_list.append(tmp.strip())
 
         return final_list
@@ -179,7 +195,8 @@ class DialogPanel:
 
         final_strs: list[str] = []
 
-        # Preserve author-chosen newlines by wrapping each original row independently.
+        # Preserve author-chosen newlines by wrapping each original row independently
+        # before pagination.
         original_lines = s.split('\n')
 
         for line in original_lines:
