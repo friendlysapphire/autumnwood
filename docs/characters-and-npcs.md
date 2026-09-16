@@ -44,12 +44,18 @@ must match the NPC's built-in Tiled Name exactly.
 
 The dialogue panel is intentionally linear for now.
 
-- `E` advances statements and closes after the last one.
+- `E` advances display pages and closes after the final page.
 - `X` closes the conversation early.
 - Movement is paused while dialogue is active.
-- The panel has one speaker-name row and seven body rows. Authors may use
-  newline characters to choose body rows, but a statement must not exceed
-  seven rows. Automatic wrapping and paging are not implemented yet.
+- The panel has one speaker-name row and seven body rows. Statements are
+  automatically wrapped and split into additional pages as needed.
+- Author-chosen newline characters are preserved. Use them when a particular
+  line break matters; otherwise author normal paragraph text and let the panel
+  wrap it.
+- `...` at the end of a page means the same authored statement continues on
+  the next page.
+- Until wrapping uses font pixel measurements, avoid an individual word wider
+  than the panel's current character limit; it raises an explicit error.
 
 Dialogue choices, shops, inventory, and branching conversations are future
 work. Do not add a generic dialogue engine before those features have a

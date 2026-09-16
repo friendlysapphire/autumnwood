@@ -25,15 +25,18 @@ The game currently supports:
 - debug visualization of regions and collision areas
 - a first interactable world object: an apple tree
 - on-screen gameplay notifications
-- map-authored NPC loading, spawning, and rendering
+- map-authored NPC loading, spawning, interaction, and linear dialogue
+- automatic dialogue wrapping and pagination
 
-The next major piece is NPC interaction and dialogue.
+Next, Autumnwood will add dialogue choices and the first vendor/shop interface.
 
 ## Documentation
 
 More detailed design notes are in [`docs/`](docs/):
 
 - [`design-overview.md`](docs/design-overview.md) — overview of the current game architecture
+- [`map-authoring.md`](docs/map-authoring.md) — guide to creating and annotating maps in Tiled
+- [`characters-and-npcs.md`](docs/characters-and-npcs.md) — guide to placing NPCs and authoring dialogue
 - [`regions-and-region-effects.md`](docs/regions-and-region-effects.md) — guide to the region/effect system and adding new region types
 
 ## Development

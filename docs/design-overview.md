@@ -531,16 +531,19 @@ for its `NPCType`. This lets special NPCs override dialogue without
 requiring every ordinary vendor to have a registry entry.
 
 `DialogPanel` owns the runtime conversation state: active/inactive status,
-speaking NPC, and current statement index. It renders a fixed bottom panel
-with the NPC display name, seven body rows, and control instructions.
+speaking NPC, generated display pages, and the current page index. It keeps
+the authored `DialogueScript` unchanged, then wraps and paginates its
+statements when a conversation begins. It renders a fixed bottom panel with
+the NPC display name, seven body rows, and control instructions.
 
-- `E` advances a linear conversation and closes it after the final statement.
+- `E` advances a linear conversation page by page and closes it after the
+  final page.
 - `X` ends an active conversation early.
 - Active dialogue pauses player input and movement resolution.
 
-Automatic text wrapping, pagination, dialogue choices, and shop UI remain
-future work. Statements exceeding the seven available body rows currently
-raise an explicit error rather than overflowing the panel.
+Author-chosen newline characters are preserved during wrapping. Each display
+page contains at most seven body rows; `...` marks a page that continues the
+same authored statement. Dialogue choices and shop UI remain future work.
 
 ## Map loading and transitions
 
@@ -655,7 +658,7 @@ The current source packages are:
 - `world/` for loaded map state, regions/effects, world objects, and
   map-aware movement validation
 - `rendering/` for camera positioning, map drawing, and debug overlays
-- `ui/` for player-interface elements such as notifications
+- `ui/` for player-interface elements such as notifications and dialogue
 
 `main.py` remains at the project root as the entry point and game-loop
 coordinator.
@@ -717,7 +720,7 @@ movement / maps / camera
 -> basic notification UI
 -> refactor main into clearer runtime responsibilities
 -> first NPC map loading / spawning / rendering
--> linear NPC dialogue panel and generic NPCType dialogue fallback
+-> linear NPC dialogue panel with wrapping/pagination and generic NPCType dialogue fallback
 -> dialogue choices and vendor interaction flow
 -> inventory as real interactions require it
 -> health / damage
@@ -738,8 +741,9 @@ Important roadmap notes:
     interacted with using E.
 -   A basic on-screen `GameNotification` pipeline works, including
     `ON_MOVE_ATTEMPT` and `TIMED` dismissal policies.
--   Map-authored NPCs now support interaction and linear dialogue. Exact
-    NPC dialogue overrides fall back to default dialogue by `NPCType`.
+-   Map-authored NPCs now support interaction and linear dialogue with
+    wrapping and pagination. Exact NPC dialogue overrides fall back to default
+    dialogue by `NPCType`.
 -   A fade-to-black / fade-in map transition effect is planned, but is
     not urgent.
 -   Y/depth-aware rendering for large props such as trees is a known
