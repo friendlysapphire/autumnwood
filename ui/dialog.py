@@ -42,7 +42,7 @@ class DialogPanel:
         self.current_page_index:int = 0
         self.speaking_npc: NPC | None = None
         # Runtime display pages generated from the speaking NPC's authored dialogue statements.
-        self.npc_dialogue_statements: list[str] | None = None
+        self.dialogue_pages: list[str] | None = None
 
         if font is None:
             self.font = pygame.font.Font(None, 22)
@@ -59,20 +59,16 @@ class DialogPanel:
         self.dialog_active = True
         self.current_page_index = 0
         self.speaking_npc = speaking_npc
-        self.npc_dialogue_statements = []
+        self.dialogue_pages = []
 
-        # Keep the NPC's authored dialogue script unchanged; wrapping and pagination build
-        # a separate runtime conversation list.
-        unwrapped = list(self.speaking_npc.dialog_info.statements)
-        for statement in unwrapped:
-            self.npc_dialogue_statements.append(self._wrap(statement))
-
-        pages = []
+        # Build wrapped runtime entries without changing the NPC’s authored dialogue script.
+        wrapped_statements: list[str] = []
+        for statement in self.speaking_npc.dialog_info.statements:
+            wrapped_statements.append(self._wrap(statement))
+        
         # Flatten wrapped statements into display pages while preserving conversation order.
-        for statement in self.npc_dialogue_statements:
-            pages.extend(self._paginate(statement, self.max_newline_chars_above_footer))
-
-        self.npc_dialogue_statements = pages
+        for wrapped_statement in wrapped_statements:
+            self.dialogue_pages.extend(self._paginate(wrapped_statement, self.max_newline_chars_above_footer))
 
         self.draw()
 
@@ -82,7 +78,7 @@ class DialogPanel:
             raise RuntimeError(f"There is no current dialog to advance.")
 
         # Linear dialogue closes after its final page rather than advancing past it.
-        max_index = len(self.npc_dialogue_statements) - 1
+        max_index = len(self.dialogue_pages) - 1
 
         if self.current_page_index < max_index:
             self.current_page_index += 1
@@ -94,28 +90,16 @@ class DialogPanel:
         self.dialog_active = False
         self.current_page_index = 0
         self.speaking_npc = None
-        self.npc_dialogue_statements = None
+        self.dialogue_pages = None
 
-    # Draw the active dialogue's header, fixed-size body area, and footer for this frame.
+    # Draw the active dialogue panel after its current text layout has been composed.
     def draw(self) -> None:
 
         if self.dialog_active:
             # Clear the previous dialogue text before drawing the active page.
             self.dialog_panel.fill((0, 0, 0, self.panel_alpha))
 
-            text = self.speaking_npc.display_name + "\n"
-
-            text += self.npc_dialogue_statements[self.current_page_index]
-
-            # The header contributes the first newline; pad to the configured limit so
-            # the footer remains anchored below the dialogue body.
-            num_newlines = text.count('\n')
-
-            newlines_to_add = self.max_newline_chars_above_footer - num_newlines
-            text += "\n" * newlines_to_add
-
-            # Append fixed controls after padding so they always occupy the bottom row.
-            text += "\n[X] End Conversation [E] Continue Conversation"
+            text: str = self._compose_dialogue_panel_text()
 
             dialog_surface = self.font.render(text, True, "grey87")
             self.dialog_panel.blit(dialog_surface, (10,10))
@@ -124,7 +108,9 @@ class DialogPanel:
     # INTERNAL METHODS
 
     # Split a wrapped statement into page strings containing at most max_lines rendered rows.
-    # Full pages ending before the statement does are marked with "...".
+    # Full pages ending before the statement does are marked with "..." (and assuming max_chars
+    # gives us enough room to do this at any point w/o special casing or re-wrapping, ie max_chars is at least '...' less than
+    # the max visible area)
     def _paginate(self, statement: str, max_lines: int) -> list[str]:
 
         paginated: list[str] = []
@@ -158,7 +144,7 @@ class DialogPanel:
         return paginated
                     
 
-    # Pack words into rendered rows that do not exceed the character limit.
+    # Pack words (space separated text units) into rendered rows that do not exceed the character limit.
     def _recompose(self, s: str) -> list[str]:
 
         final_list: list[str] = []
@@ -191,6 +177,8 @@ class DialogPanel:
         return final_list
 
     # TODO i have since discovered textwrap exists. 
+    # Convert one authored statement into newline-separated rendered rows while preserving
+    # author-chosen line breaks for later pagination.
     def _wrap(self, s: str) -> str:
 
         final_strs: list[str] = []
@@ -204,3 +192,24 @@ class DialogPanel:
             final_strs.extend(composed_str_list)
 
         return '\n'.join(final_strs)
+
+    # Build the current linear dialogue page: speaker header, paginated body text,
+    # padding, and fixed E/X controls. Choice menus will need different composition.
+    def _compose_dialogue_panel_text(self) -> str:
+        
+        text = self.speaking_npc.display_name + "\n"
+
+        text += self.dialogue_pages[self.current_page_index]
+
+        # The header contributes the first newline; pad to the configured limit so
+        # the footer remains anchored below the dialogue body.
+        num_newlines = text.count('\n')
+
+        newlines_to_add = self.max_newline_chars_above_footer - num_newlines
+        text += "\n" * newlines_to_add
+
+        # Linear dialogue uses fixed E/X controls after padding. Choice menus will later
+        # supply controls based on their current selection state.
+        text += "\n[X] End Conversation [E] Continue Conversation"
+
+        return text
