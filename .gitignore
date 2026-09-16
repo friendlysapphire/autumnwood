@@ -33,3 +33,6 @@ wheels/
 
 # asset libraries (some homemade some purchased)
 resources/spritepacks
+
+# scratch doc files
+docs/private
