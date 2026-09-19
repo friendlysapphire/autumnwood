@@ -10,6 +10,7 @@ from characters.npcs import NPC
 from ui.notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
 from ui.dialogue import DialoguePanel
 from ui.post_dialogue_menu import PostDialogueMenuType
+from ui.shop import ShopPanel
 from rendering.camera import get_clamped_camera_position
 from rendering.debug_rendering import draw_debug_overlays
 from rendering.map_render import draw_map
@@ -34,6 +35,8 @@ FRAMES_PER_SECOND = 60
 PROJECT_ROOT = Path(__file__).parent
 MAPS_PATH = PROJECT_ROOT / "resources"
 BASE_MAP_PATH = MAPS_PATH / "testmap2.tmx"
+
+SHOP_RESOURCE_PATH = PROJECT_ROOT / "resources" / "spritepacks" / "DarkPixelUI"
 
 BEGIN_GAME_SPAWN_NAME = "player_start"
 
@@ -195,6 +198,12 @@ def main() -> None:
                                  window_height=WINDOW_HEIGHT,
                                  window_width=WINDOW_WIDTH,
                                  alpha=DIALOGUE_PANEL_ALPHA)
+
+    shop_panel = ShopPanel(screen=screen,
+                           resources_base_path= SHOP_RESOURCE_PATH,
+                           window_height=WINDOW_HEIGHT,
+                           window_width=WINDOW_WIDTH,
+                           alpha=DIALOGUE_PANEL_ALPHA)
     
     # Load the initial map, which owns its runtime regions, world objects, and dimensions.
     current_map = GameMap(BASE_MAP_PATH)
@@ -269,7 +278,7 @@ def main() -> None:
                                     match post_dialogue_menu:
 
                                         case PostDialogueMenuType.GENERAL_VENDOR_MENU:
-                                            print(f"show shoppanel w/ inventory for:\n {npc!r}")
+                                            shop_panel.open(npc, player)
 
 
                             else:

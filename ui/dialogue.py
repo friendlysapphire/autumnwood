@@ -86,9 +86,17 @@ class DialoguePanel:
             self.current_page_index += 1
         else:
                 return_menu = self.post_dialogue_menu
-                npc = self.speaking_npc
-                self.clear_dialogue()
-                return return_menu, npc
+
+                # if there's an action menu at the end of the dialog, return the type and the npc
+                # so we can continue processing the post-dialogue interaction (eg shop keeper showing 
+                # shop panel)
+                if return_menu is not None:
+                    npc = self.speaking_npc
+                    self.clear_dialogue()
+                    return return_menu, npc
+                else:
+                    self.clear_dialogue()
+                    return None
 
         return None
 
