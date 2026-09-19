@@ -115,3 +115,9 @@ class NPC(Character):
         # Pad the visible bounds evenly to create a talk range, not a physical collision box.
         # TODO: make customizable?
         return pygame.Rect(left - 30, top - 30, width + 60, height + 60)
+
+    def __repr__(self) -> str:
+        r = super().__repr__()
+        r += f", npc type = {self.npc_type}"
+        return r
+

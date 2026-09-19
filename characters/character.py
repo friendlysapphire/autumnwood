@@ -182,4 +182,8 @@ class Character:
             anim_rects = self.scaffold.sprite_animation_rects[self._current_animation_state]
             self.sprite = self._sprite_sheet.subsurface(anim_rects[self._current_frame_index])
 
+    def __repr__(self) -> str:
+        r = f"internal name= {self.name}, display name= {self.display_name}, world xy = {self.world_x},{self.world_y}"
+        return r
+
 

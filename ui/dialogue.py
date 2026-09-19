@@ -74,7 +74,7 @@ class DialoguePanel:
 
         self.draw()
 
-    def advance_dialogue(self) -> None:
+    def advance_dialogue(self) -> tuple[PostDialogueMenuType, NPC] | None:
 
         if self.dialogue_active is False:
             raise RuntimeError("There is no current dialogue to advance.")
@@ -85,10 +85,13 @@ class DialoguePanel:
         if self.current_page_index < max_index:
             self.current_page_index += 1
         else:
-            if self.post_dialogue_menu is None:
+                return_menu = self.post_dialogue_menu
+                npc = self.speaking_npc
                 self.clear_dialogue()
-            else:
-                self.process_post_dialogue_menu()
+                return return_menu, npc
+
+        return None
+
 
     def clear_dialogue(self) -> None:
         # Reset all conversation-specific state so the next interaction begins cleanly.
@@ -111,8 +114,6 @@ class DialoguePanel:
             self.dialogue_panel_surface.blit(dialogue_surface, (10,10))
             self.screen.blit(self.dialogue_panel_surface, (20, (self.window_height - self.panel_height) - 5))
 
-    def process_post_dialogue_menu(self) -> None:
-        print(f"processing post-dialogue menu: {self.post_dialogue_menu}")
 
     # INTERNAL METHODS
 

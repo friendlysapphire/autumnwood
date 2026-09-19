@@ -9,6 +9,7 @@ from characters.character_scaffolds import ELF_MAGE
 from characters.npcs import NPC
 from ui.notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
 from ui.dialogue import DialoguePanel
+from ui.post_dialogue_menu import PostDialogueMenuType
 from rendering.camera import get_clamped_camera_position
 from rendering.debug_rendering import draw_debug_overlays
 from rendering.map_render import draw_map
@@ -259,7 +260,17 @@ def main() -> None:
                         case pygame.K_e: 
 
                             if dialogue_panel.dialogue_active:
-                                dialogue_panel.advance_dialogue()
+                                post_dialogue_info = dialogue_panel.advance_dialogue()
+
+                                if post_dialogue_info is not None:
+
+                                    post_dialogue_menu, npc = post_dialogue_info
+
+                                    match post_dialogue_menu:
+
+                                        case PostDialogueMenuType.GENERAL_VENDOR_MENU:
+                                            print(f"show shoppanel w/ inventory for:\n {npc!r}")
+
 
                             else:
 
