@@ -1,13 +1,13 @@
 from dataclasses import dataclass
-from enum import StrEnum
 
 import pygame
 
 from characters.npcs import NPC
+from ui.post_dialogue_menu import PostDialogueMenuType
 
-# DialogPanel owns active conversation state and renders the currently selected
-# page from the speaking NPC's dialogue script.
-class DialogPanel:
+# DialoguePanel owns active conversation state and renders the currently selected
+# page from the speaking NPC's interaction definition.
+class DialoguePanel:
 
     def __init__(self,
                  *,
@@ -38,11 +38,12 @@ class DialogPanel:
         self.max_newline_chars_above_footer = self.max_lines_above_footer - 1
 
 
-        self.dialog_active: bool = False
+        self.dialogue_active: bool = False
         self.current_page_index:int = 0
         self.speaking_npc: NPC | None = None
         # Runtime display pages generated from the speaking NPC's authored dialogue statements.
         self.dialogue_pages: list[str] | None = None
+        self.post_dialogue_menu: PostDialogueMenuType | None = None
 
         if font is None:
             self.font = pygame.font.Font(None, 22)
@@ -50,20 +51,21 @@ class DialogPanel:
             self.font = font
 
         # This transparent Surface is redrawn only while an active dialogue exists.
-        self.dialog_panel = pygame.Surface((self.panel_width, self.panel_height), pygame.SRCALPHA)
-        self.dialog_panel.fill((0, 0, 0, self.panel_alpha))
+        self.dialogue_panel_surface = pygame.Surface((self.panel_width, self.panel_height), pygame.SRCALPHA)
+        self.dialogue_panel_surface.fill((0, 0, 0, self.panel_alpha))
 
-    def start_dialog(self, speaking_npc: NPC) -> None:
+    def start_dialogue(self, speaking_npc: NPC) -> None:
         # Every new conversation begins at its first page, including when the
         # player speaks to the same NPC again.
-        self.dialog_active = True
+        self.dialogue_active = True
         self.current_page_index = 0
         self.speaking_npc = speaking_npc
         self.dialogue_pages = []
+        self.post_dialogue_menu = self.speaking_npc.interaction_definition.post_dialogue_menu
 
-        # Build wrapped runtime entries without changing the NPC’s authored dialogue script.
+        # Build wrapped runtime entries without changing the NPC's interaction definition.
         wrapped_statements: list[str] = []
-        for statement in self.speaking_npc.dialog_info.statements:
+        for statement in self.speaking_npc.interaction_definition.statements:
             wrapped_statements.append(self._wrap(statement))
         
         # Flatten wrapped statements into display pages while preserving conversation order.
@@ -72,10 +74,10 @@ class DialogPanel:
 
         self.draw()
 
-    def advance_dialog(self) -> None:
+    def advance_dialogue(self) -> None:
 
-        if self.dialog_active is False:
-            raise RuntimeError(f"There is no current dialog to advance.")
+        if self.dialogue_active is False:
+            raise RuntimeError("There is no current dialogue to advance.")
 
         # Linear dialogue closes after its final page rather than advancing past it.
         max_index = len(self.dialogue_pages) - 1
@@ -83,27 +85,34 @@ class DialogPanel:
         if self.current_page_index < max_index:
             self.current_page_index += 1
         else:
-            self.clear_dialog()
+            if self.post_dialogue_menu is None:
+                self.clear_dialogue()
+            else:
+                self.process_post_dialogue_menu()
 
-    def clear_dialog(self) -> None:
+    def clear_dialogue(self) -> None:
         # Reset all conversation-specific state so the next interaction begins cleanly.
-        self.dialog_active = False
+        self.dialogue_active = False
         self.current_page_index = 0
         self.speaking_npc = None
         self.dialogue_pages = None
+        self.post_dialogue_menu = None
 
     # Draw the active dialogue panel after its current text layout has been composed.
     def draw(self) -> None:
 
-        if self.dialog_active:
+        if self.dialogue_active:
             # Clear the previous dialogue text before drawing the active page.
-            self.dialog_panel.fill((0, 0, 0, self.panel_alpha))
+            self.dialogue_panel_surface.fill((0, 0, 0, self.panel_alpha))
 
             text: str = self._compose_dialogue_panel_text()
 
-            dialog_surface = self.font.render(text, True, "grey87")
-            self.dialog_panel.blit(dialog_surface, (10,10))
-            self.screen.blit(self.dialog_panel, (20, (self.window_height - self.panel_height) - 5))
+            dialogue_surface = self.font.render(text, True, "grey87")
+            self.dialogue_panel_surface.blit(dialogue_surface, (10,10))
+            self.screen.blit(self.dialogue_panel_surface, (20, (self.window_height - self.panel_height) - 5))
+
+    def process_post_dialogue_menu(self) -> None:
+        print(f"processing post-dialogue menu: {self.post_dialogue_menu}")
 
     # INTERNAL METHODS
 
@@ -158,8 +167,8 @@ class DialogPanel:
             # this version does not hyphenate or split words. A later pixel-based
             # wrapper can decide how to handle an individual word wider than the panel.
             if len(word_queue[0]) > self.max_chars:
-                raise NotImplementedError("NPC Dialog panel must be wider than the individual words you want to put there."
-                                        "Increase dialoge panel width. Really, this should never happen.")
+                raise NotImplementedError("NPC dialogue panel must be wider than the individual words you want to put there."
+                                        "Increase dialogue panel width. Really, this should never happen.")
         
             else: 
                 # tmp keeps a trailing space while a row is being assembled, so its

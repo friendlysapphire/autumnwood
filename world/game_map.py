@@ -7,7 +7,7 @@ from pytmx.util_pygame import load_pygame
 from characters.character import Character
 from characters.character_scaffolds import TRAVELING_VENDOR
 from characters.npcs import NPC
-from characters.npc_dialogue import DIALOGUE_SCRIPTS_BY_NAME, DEFAULT_DIALOG_SCRIPTS_BY_TYPE
+from characters.npc_interactions import NPC_INTERACTIONS_BY_NAME, DEFAULT_NPC_INTERACTIONS_BY_TYPE
 from characters.npc_type import NPCType
 from world.region import MapTransitionRegion, QuicksandRegion, Region, RegionType
 from world.world_object import AppleTree, WorldObject, WorldObjectType
@@ -162,11 +162,11 @@ class GameMap:
                         except KeyError as e:
                             raise KeyError(f"NPC {obj.name!r} at ({obj.x}, {obj.y}) is missing display_name.") from e
   
-                        # Prefer an exact NPC dialogue override; ordinary NPCs fall back to the default
-                        # script registered for their NPCType.
-                        script = DIALOGUE_SCRIPTS_BY_NAME.get(obj.name)
-                        if script is None:
-                            script = DEFAULT_DIALOG_SCRIPTS_BY_TYPE.get(npc_type)
+                        # Prefer an exact NPC interaction override; ordinary NPCs fall back to the
+                        # default interaction registered for their NPCType.
+                        interaction_definition = NPC_INTERACTIONS_BY_NAME.get(obj.name)
+                        if interaction_definition is None:
+                            interaction_definition = DEFAULT_NPC_INTERACTIONS_BY_TYPE.get(npc_type)
 
                         match npc_type:
 
@@ -183,7 +183,7 @@ class GameMap:
                                               spawn_on_map_load=spawn_on_map_load,
                                               initial_x_spawn=obj.x,
                                               initial_y_spawn=obj.y,
-                                              dialog_info=script
+                                              interaction_definition=interaction_definition
                                               )
                                 
                                 npcs_list.append(vendor1)

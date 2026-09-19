@@ -22,15 +22,16 @@ The loader raises a map-authoring error when `display_name` is missing or
 
 ## Dialogue for an existing NPC type
 
-Dialogue content lives in `characters/npc_dialogue.py` as immutable
-`DialogueScript` objects. `GameMap` resolves a script while it loads the
-NPC, then the NPC keeps that resolved script as `dialog_info`.
+NPC interaction content lives in `characters/npc_interactions.py` as immutable
+`NPCInteractionDefinition` objects. `GameMap` resolves an interaction while it
+loads the NPC, then the NPC keeps that resolved definition as
+`interaction_definition`.
 
 The lookup order is:
 
 ```text
-exact script registered for the NPC's Tiled Name
--> default script registered for the NPCType
+exact interaction definition registered for the NPC's Tiled Name
+-> default interaction definition registered for the NPCType
 ```
 
 Use the default registry for ordinary NPCs of a type. For example, two
@@ -73,7 +74,7 @@ To introduce a new type:
 3. Add the corresponding `NPCType` branch in `GameMap._load_map_elements()`
    to choose the scaffold and the initial interaction/spawn configuration.
 4. If the loader configures that type as interactable, add its default
-   dialogue script. Otherwise configure it as non-interactable for now.
+   interaction definition. Otherwise configure it as non-interactable for now.
 5. Place a point object in Tiled using the new `character_type` and test
    its placement, collision, interaction range, and dialogue.
 

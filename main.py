@@ -8,7 +8,7 @@ from characters.character import Character
 from characters.character_scaffolds import ELF_MAGE
 from characters.npcs import NPC
 from ui.notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
-from ui.dialog import DialogPanel
+from ui.dialogue import DialoguePanel
 from rendering.camera import get_clamped_camera_position
 from rendering.debug_rendering import draw_debug_overlays
 from rendering.map_render import draw_map
@@ -24,9 +24,9 @@ NOTIFICATION_PANEL_HEIGHT = 96
 NOTIFICATION_PANEL_WIDTH = WINDOW_WIDTH - 40
 NOTIFICATION_PANEL_ALPHA = 100
 
-DIALOG_PANEL_HEIGHT = 168
-DIALOG_PANEL_WIDTH = WINDOW_WIDTH - 40
-DIALOG_PANEL_ALPHA = 200
+DIALOGUE_PANEL_HEIGHT = 168
+DIALOGUE_PANEL_WIDTH = WINDOW_WIDTH - 40
+DIALOGUE_PANEL_ALPHA = 200
 
 FRAMES_PER_SECOND = 60
 
@@ -158,7 +158,7 @@ def get_closest_npc(character: Character,
 def begin_interaction(character: Character,
                       target: NPC | WorldObject,
                       notification_panel: NotificationPanel,
-                      dialogue_panel: DialogPanel
+                      dialogue_panel: DialoguePanel
                       ) -> None:
                             
     if isinstance(target, AppleTree):
@@ -170,7 +170,7 @@ def begin_interaction(character: Character,
 
     elif isinstance(target, NPC):
         print(f"interacting with NPC: {target.name}, {target.display_name}")        
-        dialogue_panel.start_dialog(target)
+        dialogue_panel.start_dialogue(target)
 
     
 def main() -> None:
@@ -188,12 +188,12 @@ def main() -> None:
                                            window_width=WINDOW_WIDTH,
                                            alpha=NOTIFICATION_PANEL_ALPHA)
 
-    dialogue_panel = DialogPanel(screen=screen,
-                                 panel_width=DIALOG_PANEL_WIDTH,
-                                 panel_height=DIALOG_PANEL_HEIGHT,
+    dialogue_panel = DialoguePanel(screen=screen,
+                                 panel_width=DIALOGUE_PANEL_WIDTH,
+                                 panel_height=DIALOGUE_PANEL_HEIGHT,
                                  window_height=WINDOW_HEIGHT,
                                  window_width=WINDOW_WIDTH,
-                                 alpha=DIALOG_PANEL_ALPHA)
+                                 alpha=DIALOGUE_PANEL_ALPHA)
     
     # Load the initial map, which owns its runtime regions, world objects, and dimensions.
     current_map = GameMap(BASE_MAP_PATH)
@@ -251,15 +251,15 @@ def main() -> None:
 
                         # X ends an active conversation without advancing its dialogue.
                         case pygame.K_x:
-                            if dialogue_panel.dialog_active:
-                                dialogue_panel.clear_dialog()
+                            if dialogue_panel.dialogue_active:
+                                dialogue_panel.clear_dialogue()
 
                         # E advances an active conversation; otherwise it resolves and begins a
                         # nearby world interaction.
                         case pygame.K_e: 
 
-                            if dialogue_panel.dialog_active:
-                                dialogue_panel.advance_dialog()
+                            if dialogue_panel.dialogue_active:
+                                dialogue_panel.advance_dialogue()
 
                             else:
 
@@ -279,7 +279,7 @@ def main() -> None:
         screen.fill("black")
 
         # Dialogue pauses player input and all movement resolution while it is active.
-        if not dialogue_panel.dialog_active:
+        if not dialogue_panel.dialogue_active:
 
             # get keypresses for player movement, set direction
             pressed_keys = pygame.key.get_pressed()

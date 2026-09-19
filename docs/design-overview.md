@@ -199,7 +199,7 @@ World Objects / apple_tree
 -> AppleTree
 
 NPCs / traveling_vendor
--> NPC(scaffold=TRAVELING_VENDOR, display_name, dialogue script)
+-> NPC(scaffold=TRAVELING_VENDOR, display_name, interaction definition)
 ```
 
 The leading underscore marks this loader as an internal implementation
@@ -241,7 +241,8 @@ each value remains clear at the definition site.
 
 `NPC` is a `Character` with map-authored placement information such as
 its NPC type, initial location, and whether it should spawn when the map
-loads. It also holds its resolved `DialogueScript`, when it has dialogue.
+loads. It also holds its resolved `NPCInteractionDefinition`, when it has
+dialogue or another NPC interaction.
 `GameMap` loads that data; `main.py` applies the spawn policy when the
 initial map or a transition destination becomes current.
 
@@ -524,15 +525,16 @@ which has persistent conversation state and explicit player controls.
 
 ## NPC dialogue
 
-`DialogueScript` is immutable authored content: an ID and an ordered tuple
-of statements. `GameMap` first looks for an exact script registered under
-the NPC's internal Tiled Name, then falls back to the default registered
-for its `NPCType`. This lets special NPCs override dialogue without
-requiring every ordinary vendor to have a registry entry.
+`NPCInteractionDefinition` is immutable authored content: an ID, an ordered
+tuple of dialogue statements, and an optional post-dialogue menu. `GameMap`
+first looks for an exact interaction registered under the NPC's internal Tiled
+Name, then falls back to the default registered for its `NPCType`. This lets
+special NPCs override interaction content without requiring every ordinary
+vendor to have a registry entry.
 
-`DialogPanel` owns the runtime conversation state: active/inactive status,
+`DialoguePanel` owns the runtime conversation state: active/inactive status,
 speaking NPC, generated display pages, and the current page index. It keeps
-the authored `DialogueScript` unchanged, then wraps and paginates its
+the authored `NPCInteractionDefinition` unchanged, then wraps and paginates its
 statements when a conversation begins. It renders a fixed bottom panel with
 the NPC display name, seven body rows, and control instructions.
 
@@ -736,10 +738,10 @@ characters/npcs.py
     a Character with map-authored initial placement, spawn policy, and
     resolved dialogue content
 
-characters/npc_dialogue.py
-    static dialogue scripts and exact-NPC/default-NPCType registries
+characters/npc_interactions.py
+    static NPC interaction definitions and exact-NPC/default-NPCType registries
 
-ui/dialog.py
+ui/dialogue.py
     active dialogue state and panel rendering
 
 main.py
