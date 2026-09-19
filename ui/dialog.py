@@ -210,6 +210,6 @@ class DialogPanel:
 
         # Linear dialogue uses fixed E/X controls after padding. Choice menus will later
         # supply controls based on their current selection state.
-        text += "\n[X] End Conversation [E] Continue Conversation"
+        text += "\n[X] End Conversation     [E] Continue Conversation"
 
         return text

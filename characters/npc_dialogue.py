@@ -20,8 +20,8 @@ class DialogueScript:
 
 # CUSTOM SCRIPTS BY CHARACTER INTERNAL NAME
 tv_01_statements: tuple[str, ...] = (
-    "Welcome to my Shop!! Welcome to my Shop!! Welcome to my Shop!! Welcome to my Shop!! Welcome to my Shop!! Welcome to my Shop!!",
-    "Statement 2"
+    "Hi Ashley, welcome to my shop!",
+    "Here you will find food, weapons, spells, armor, and other sundry items on sale at fair prices."
 )
 
 tv_01 = DialogueScript(id=ExactNPC.TRAVELING_VENDOR_01,
