@@ -89,9 +89,14 @@ class ShopPanel:
             self.shop_base_surface.blit(self.shop_inventory_img, (30,40))
             self.shop_base_surface.blit(self.shop_inventory_img, (505,40))
 
+            # label the 2 inventory screens
+            vs_label = self.font.render("Vendor Stock", True, "grey87")
+            yi_label = self.font.render("Your Inventory", True, "grey87")
+            self.shop_base_surface.blit(vs_label, (35, 50))
+            self.shop_base_surface.blit(yi_label, (520,50))
+
             # add vendor's displayname
-            name = self.npc_shopkeeper.display_name
-            display_name = self.font.render(name, True, "grey87")
+            display_name = self.font.render(self.npc_shopkeeper.display_name, True, "grey87")
             self.shop_base_surface.blit(display_name, (25,10))
 
 
