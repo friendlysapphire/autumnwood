@@ -5,6 +5,8 @@ import pygame
 from characters.character import Character
 from characters.npcs import NPC
 
+# TODO: lot of hard coded values in here that will need updates if we ever change the window size or
+# make it user modifiable
 
 class ShopPanel:
 
@@ -85,8 +87,7 @@ class ShopPanel:
             footer = "Buy"
             footer_fmt = self.font.render(footer, True, "grey87")
             self.shop_base_surface.blit(footer_fmt, (315, 400))
-
-            # TODO: stop hardcoding these values so we can resize windows. 
+ 
             self.screen.blit(self.shop_base_surface, (96,123))
 
     # INTERNAL ONLY HELPERS
