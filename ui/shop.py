@@ -22,12 +22,6 @@ class ShopPanel:
 
         self.resources_base_path = resources_base_path
 
-        #TODO: this is probably not how we should be locating the resources. figure out a better way
-        self.shop_frame_img_path = self.resources_base_path / "UI" / "Frame_bg_big_and_title.png"
-        self.up_arrow_img_path = self.resources_base_path / "UI" / "Arrow_up.png"
-        self.down_arrow_img_path = self.resources_base_path / "UI" / "Arrow_down.png"
-        self.inventory_img_path = self.resources_base_path / "UI" / "Inventory_bg.png"
-
         self.window_height = window_height
         self.window_width = window_width
         self.panel_alpha = alpha
@@ -94,32 +88,43 @@ class ShopPanel:
 
     def _init_shop_panel(self) -> None:
 
+        shop_frame_img_path = self.resources_base_path / "UI" / "Frame_bg_big_and_title.png"
+        up_arrow_img_path = self.resources_base_path / "UI" / "Arrow_up.png"
+        down_arrow_img_path = self.resources_base_path / "UI" / "Arrow_down.png"
+        inventory_img_path = self.resources_base_path / "UI" / "Inventory_bg.png"
+
         # the img is 768 x 394. we're adding 32 pixels at the bottom for a 1 line text footer
         self.shop_base_surface = pygame.Surface((768, 426), pygame.SRCALPHA)
         self.shop_base_surface.fill((0, 0, 0, self.panel_alpha))
 
-        self.shop_frame_img = pygame.image.load(self.shop_frame_img_path).convert_alpha()
-        self.shop_inventory_img = pygame.image.load(self.inventory_img_path).convert_alpha()
+        shop_frame_img = pygame.image.load(shop_frame_img_path).convert_alpha()
+        shop_inventory_img = pygame.image.load(inventory_img_path).convert_alpha()
 
-        self.up_arrow_img = pygame.image.load(self.up_arrow_img_path).convert_alpha()
-        self.down_arrow_img = pygame.image.load(self.down_arrow_img_path).convert_alpha()
+        up_arrow_img = pygame.image.load(up_arrow_img_path).convert_alpha()
+        down_arrow_img = pygame.image.load(down_arrow_img_path).convert_alpha()
 
         self.shop_base_img = pygame.Surface((768, 426), pygame.SRCALPHA)
+
         # add the foundational frame to blank base surface 
-        self.shop_base_img.blit(self.shop_frame_img, (0,0))
+        self.shop_base_img.blit(shop_frame_img, (0,0))
+
         # add 2 inventory screens
-        self.shop_base_img.blit(self.shop_inventory_img, (30,40))
-        self.shop_base_img.blit(self.shop_inventory_img, (505,40))
+        self.shop_base_img.blit(shop_inventory_img, (30,40))
+        self.shop_base_img.blit(shop_inventory_img, (505,40))
+
         # label the vendor's inventory screen
         vs_label = self.font.render("Vendor Stock", True, "grey87")
         self.shop_base_img.blit(vs_label, (35, 50))
+
         # label player's inventory screens
         yi_label = self.font.render("Your Inventory", True, "grey87")
         self.shop_base_img.blit(yi_label, (520,50))
+
         # apply the instructional footer
         footer = "Select    [Tab] Switch Inventory  [E]            [X] Close Shop"
         footer_fmt = self.font.render(footer, True, "grey87")
         self.shop_base_img.blit(footer_fmt, (45, 400))
+
         # up and down arrows
-        self.shop_base_img.blit(self.up_arrow_img, (10,403))
-        self.shop_base_img.blit(self.down_arrow_img, (25,403))
+        self.shop_base_img.blit(up_arrow_img, (10,403))
+        self.shop_base_img.blit(down_arrow_img, (25,403))
