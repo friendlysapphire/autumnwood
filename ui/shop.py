@@ -92,16 +92,18 @@ class ShopPanel:
         up_arrow_img_path = self.resources_base_path / "UI" / "Arrow_up.png"
         down_arrow_img_path = self.resources_base_path / "UI" / "Arrow_down.png"
         inventory_img_path = self.resources_base_path / "UI" / "Inventory_bg.png"
+        slot_img_path = self.resources_base_path / "UI" / "Icon_Frame.png"
+
+        # load images 
+        shop_frame_img = pygame.image.load(shop_frame_img_path).convert_alpha()
+        shop_inventory_img = pygame.image.load(inventory_img_path).convert_alpha()
+        up_arrow_img = pygame.image.load(up_arrow_img_path).convert_alpha()
+        down_arrow_img = pygame.image.load(down_arrow_img_path).convert_alpha()
+        slot_img = pygame.image.load(slot_img_path).convert_alpha()
 
         # the img is 768 x 394. we're adding 32 pixels at the bottom for a 1 line text footer
         self.shop_base_surface = pygame.Surface((768, 426), pygame.SRCALPHA)
         self.shop_base_surface.fill((0, 0, 0, self.panel_alpha))
-
-        shop_frame_img = pygame.image.load(shop_frame_img_path).convert_alpha()
-        shop_inventory_img = pygame.image.load(inventory_img_path).convert_alpha()
-
-        up_arrow_img = pygame.image.load(up_arrow_img_path).convert_alpha()
-        down_arrow_img = pygame.image.load(down_arrow_img_path).convert_alpha()
 
         self.shop_base_img = pygame.Surface((768, 426), pygame.SRCALPHA)
 
@@ -116,7 +118,7 @@ class ShopPanel:
         vs_label = self.font.render("Vendor Stock", True, "grey87")
         self.shop_base_img.blit(vs_label, (35, 50))
 
-        # label player's inventory screens
+        # label player's inventory screen
         yi_label = self.font.render("Your Inventory", True, "grey87")
         self.shop_base_img.blit(yi_label, (520,50))
 
@@ -128,3 +130,14 @@ class ShopPanel:
         # up and down arrows
         self.shop_base_img.blit(up_arrow_img, (10,403))
         self.shop_base_img.blit(down_arrow_img, (25,403))
+
+        # add vendor inventory slots
+        for y in range(100, 350, 50):
+            for x in range(36, 216, 44):
+                self.shop_base_img.blit(slot_img, (x, y))
+
+        # add player inventory slots
+        for y in range(100, 350, 50):
+            for x in range(511, 731, 44):
+                self.shop_base_img.blit(slot_img, (x, y))
+
