@@ -263,12 +263,17 @@ def main() -> None:
                         case pygame.K_x:
                             if dialogue_panel.dialogue_active:
                                 dialogue_panel.clear_dialogue()
+                            elif shop_panel.shop_active:
+                                shop_panel.close()
 
                         # E advances an active conversation; otherwise it resolves and begins a
                         # nearby world interaction.
-                        case pygame.K_e: 
+                        case pygame.K_e:
 
-                            if dialogue_panel.dialogue_active:
+                            if shop_panel.shop_active:
+                                pass
+
+                            elif dialogue_panel.dialogue_active:
                                 post_dialogue_info = dialogue_panel.advance_dialogue()
 
                                 if post_dialogue_info is not None:
@@ -279,7 +284,6 @@ def main() -> None:
 
                                         case PostDialogueMenuType.GENERAL_VENDOR_MENU:
                                             shop_panel.open(npc, player)
-
 
                             else:
 
@@ -299,7 +303,7 @@ def main() -> None:
         screen.fill("black")
 
         # Dialogue pauses player input and all movement resolution while it is active.
-        if not dialogue_panel.dialogue_active:
+        if not dialogue_panel.dialogue_active and not shop_panel.shop_active:
 
             # get keypresses for player movement, set direction
             pressed_keys = pygame.key.get_pressed()
@@ -414,6 +418,7 @@ def main() -> None:
         notification_panel.update_and_draw(delta_secs=delta_secs)
 
         dialogue_panel.draw()
+        shop_panel.draw()
 
         # Draw optional region and collision debug overlays on top of the completed scene.
         if show_map_debug_features:
