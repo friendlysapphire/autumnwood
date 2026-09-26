@@ -67,6 +67,8 @@ class Inventory:
         self._range_check(index)
         self._slots[index] = bundle
 
+    # Add as much of an item as this inventory can hold, returning any quantity that
+    # could not fit into compatible bundles or empty slots.
     def add_item(self, item: Item, quantity: int) -> int:
 
         overflow = 0
@@ -74,14 +76,19 @@ class Inventory:
         if quantity <= 0:
             raise ValueError(f"Can't add {quantity} quantity to an ItemBundle.")
 
-        # pull all slots w/ this type, iterate through adding qty until overflow = 0 or we run out of space
-        # if there's still overflow, see if there's a None slot and if to turn it into an Itembundle slot
-        # add into that new slot, if there's overflow, keep going until it's all in or we're out of slot space
+        # First fill compatible existing bundles, stopping early once all quantity fits.
+        # Then create new bundles in empty slots for any remaining quantity. Return any
+        # quantity still left when no more slots are available.
 
         return overflow
 
+    # Remove an exact quantity from the selected slot; the bundle already in that slot
+    # determines which item is being removed.
+    def remove_from_slot(self, index, quantity) -> None:
+        pass
+
     # returns overflow from bundle or 0 if all items added
-    def add_quantity_to_bundle(self, index: int, quantity: int = 1) -> int:
+    def _add_quantity_to_bundle(self, index: int, quantity: int = 1) -> int:
 
         overflow = 0 
 
@@ -102,8 +109,7 @@ class Inventory:
 
         return overflow
 
-
-    def subtract_quantity_from_bundle(self, index: int, quantity: int = 1) -> None:
+    def _subtract_quantity_from_bundle(self, index: int, quantity: int = 1) -> None:
 
         if quantity <= 0:
             raise ValueError(f"Can't remove {quantity} quantity to an ItemBundle.")
@@ -135,12 +141,3 @@ class Inventory:
     # all the Nones should be at the end. shift everything down to make that the case
     def _compact(self) -> None:
         pass
-
-
-
-        
-
-
-            
-
-        
