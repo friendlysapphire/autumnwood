@@ -1,3 +1,4 @@
+from items.item import Item
 from items.item_bundle import ItemBundle
 from typing import TypeAlias
 
@@ -50,18 +51,92 @@ class Inventory:
 
         assert len(self._slots) == self.num_slots
 
-    def get_bundle(self, index: int) -> SlotContent:
-        # Return a valid slot's bundle, or None when that slot is currently empty.
-        if index > self.num_slots - 1 or index < 0:
-            raise IndexError(f"index {index} out of range for this Inventory's # of slots ({self.num_slots}).")
-        else:
-            return self._slots[index]
-
     @property
     def slots(self) -> tuple[SlotContent, ...]:
         # Expose slot contents for rendering without allowing callers to replace the
         # inventory's internal slot list.
         return tuple(self._slots)
+
+    # Return a valid slot's bundle, or None when that slot is currently empty.
+    def get_bundle(self, index: int) -> SlotContent:
+        self._range_check(index)
+        return self._slots[index]
+
+    # place a bundle (or None) at an index, replacing whatever was at that index and not shifting elements
+    def place_bundle(self, bundle: SlotContent, index: int) -> None:
+        self._range_check(index)
+        self._slots[index] = bundle
+
+    def add_item(self, item: Item, quantity: int) -> int:
+
+        overflow = 0
+
+        if quantity <= 0:
+            raise ValueError(f"Can't add {quantity} quantity to an ItemBundle.")
+
+        # pull all slots w/ this type, iterate through adding qty until overflow = 0 or we run out of space
+        # if there's still overflow, see if there's a None slot and if to turn it into an Itembundle slot
+        # add into that new slot, if there's overflow, keep going until it's all in or we're out of slot space
+
+        return overflow
+
+    # returns overflow from bundle or 0 if all items added
+    def add_quantity_to_bundle(self, index: int, quantity: int = 1) -> int:
+
+        overflow = 0 
+
+        if quantity <= 0:
+            raise ValueError(f"Can't add {quantity} quantity to an ItemBundle.")
+
+        self._range_check(index)
+        bundle: SlotContent = self._slots[index]
+
+        if bundle is None:
+            raise ValueError(f"Can't add quantity to an empty bundle slot (None)")
+
+        elif (new_qty := bundle.quantity + quantity) > bundle.item.max_bundle_qty:
+            bundle.quantity = bundle.item.max_bundle_qty
+            overflow = new_qty - bundle.quantity   
+        else:
+            bundle.quantity = new_qty
+
+        return overflow
+
+
+    def subtract_quantity_from_bundle(self, index: int, quantity: int = 1) -> None:
+
+        if quantity <= 0:
+            raise ValueError(f"Can't remove {quantity} quantity to an ItemBundle.")
+
+        self._range_check(index)
+
+        bundle: SlotContent = self._slots[index]
+
+        if bundle is None:
+            raise ValueError(f"Can't remove a quantity from an empty bundle slot (None)")
+
+        # could have simplified this into a max(0,bundle.quantity - quantity) situation
+        elif (new_qty := bundle.quantity - quantity) < 0:
+            raise ValueError(f"Can't remove {quantity} from ItemBundle, would result in invalid {new_qty} items.")
+        else:
+            bundle.quantity = new_qty
+
+        if bundle.quantity == 0:
+            self._slots[index] = None
+
+        self._compact()
+
+
+    def _range_check(self, index: int) -> None:
+        if index < 0 or index > self.num_slots - 1:
+            raise IndexError(f"index {index} out of range for this Inventory's # of slots ({self.num_slots}).")
+
+    # TODO
+    # all the Nones should be at the end. shift everything down to make that the case
+    def _compact(self) -> None:
+        pass
+
+
 
         
 
