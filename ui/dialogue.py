@@ -38,11 +38,14 @@ class DialoguePanel:
         self.max_newline_chars_above_footer = self.max_lines_above_footer - 1
 
 
+        # These values describe one in-progress conversation and are reset together
+        # when it closes so a later interaction always starts from clean state.
         self.dialogue_active: bool = False
         self.current_page_index:int = 0
         self.speaking_npc: NPC | None = None
         # Runtime display pages generated from the speaking NPC's authored dialogue statements.
         self.dialogue_pages: list[str] | None = None
+        # A script can request a follow-up UI, such as a vendor shop, after its final page.
         self.post_dialogue_menu: PostDialogueMenuType | None = None
 
         if font is None:
@@ -61,6 +64,7 @@ class DialoguePanel:
         self.current_page_index = 0
         self.speaking_npc = speaking_npc
         self.dialogue_pages = []
+        # Keep the requested handoff with this conversation until its final page resolves.
         self.post_dialogue_menu = self.speaking_npc.interaction_definition.post_dialogue_menu
 
         # Build wrapped runtime entries without changing the NPC's interaction definition.
@@ -85,11 +89,11 @@ class DialoguePanel:
         if self.current_page_index < max_index:
             self.current_page_index += 1
         else:
+                # clear_dialogue resets both values, so preserve any requested handoff first.
                 return_menu = self.post_dialogue_menu
 
-                # if there's an action menu at the end of the dialog, return the type and the npc
-                # so we can continue processing the post-dialogue interaction (eg shop keeper showing 
-                # shop panel)
+                # The caller needs both the next UI type and its NPC, such as the vendor
+                # whose stock should populate a ShopPanel.
                 if return_menu is not None:
                     npc = self.speaking_npc
                     self.clear_dialogue()
@@ -125,10 +129,10 @@ class DialoguePanel:
 
     # INTERNAL METHODS
 
-    # Split a wrapped statement into page strings containing at most max_lines rendered rows.
-    # Full pages ending before the statement does are marked with "..." (and assuming max_chars
-    # gives us enough room to do this at any point w/o special casing or re-wrapping, ie max_chars is at least '...' less than
-    # the max visible area)
+    # Split already-wrapped rows into body pages. The speaker header and fixed controls are
+    # composed later, so max_lines is only the number of rows available for dialogue text.
+    # Full pages ending before the statement does are marked with "...". max_chars leaves room
+    # for that marker without needing to re-wrap the final row.
     def _paginate(self, statement: str, max_lines: int) -> list[str]:
 
         paginated: list[str] = []
