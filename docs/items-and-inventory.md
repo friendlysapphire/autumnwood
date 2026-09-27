@@ -30,6 +30,18 @@ An `Item` is the shared fact sheet for a kind of item. An `ItemBundle` is a
 particular changing pile, such as twelve Apples owned by a vendor. Never use
 one shared mutable `ItemBundle` as stock for multiple vendors or inventories.
 
+## Item icons
+
+`Item` stores an authored `icon_path` and exposes `icon_surface` as a lazy
+cached property. The first code that reads `item.icon_surface` loads the PNG
+and runs `convert_alpha()`; later reads reuse that same Pygame `Surface` for
+the rest of the game run.
+
+Do not load the image in `Item.__post_init__()`. The item catalog imports
+before Pygame creates its display, while `convert_alpha()` requires the display
+to exist. Shop rendering accesses `icon_surface` only after display setup, so
+it is the appropriate time to load and cache the image.
+
 ## Add an actual game item
 
 The source art catalog is intentionally broader than the current game-item
