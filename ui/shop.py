@@ -158,7 +158,7 @@ class ShopPanel:
                 self.shop_base_img.blit(slot_img, slot_rect)
                 self.player_slot_rects.append(slot_rect)
 
-    def blit_player_inventory_to_base(self) -> None:
+    def _blit_player_inventory_to_base(self) -> None:
         pass
 
     def _blit_npc_inventory_to_base(self) -> None:
