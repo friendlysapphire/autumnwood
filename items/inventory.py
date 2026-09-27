@@ -71,7 +71,7 @@ class Inventory:
     # could not fit into compatible bundles or empty slots.
     def add_item(self, item: Item, quantity: int) -> int:
 
-        overflow = 0
+        amt_left = quantity
 
         if quantity <= 0:
             raise ValueError(f"Can't add {quantity} quantity to an ItemBundle.")
@@ -80,12 +80,39 @@ class Inventory:
         # Then create new bundles in empty slots for any remaining quantity. Return any
         # quantity still left when no more slots are available.
 
-        return overflow
+        for index, slot in enumerate(self._slots):
+
+            if slot is not None:
+                # if we're looking at the right type of item and it's not already full
+                if slot.item.id == item.id and slot.quantity < slot.item.max_bundle_qty:
+
+                    amt_left = self._add_quantity_to_bundle(index, amt_left)
+                    if amt_left == 0:
+                        return amt_left
+
+        # traverse again looking for None slots and fill tose up until we accommodate the new items or run out
+        # of space.
+        #
+
+        for index, slot in enumerate(self._slots):
+
+            if slot is None:
+                # add a new empty bundle here of the correct type
+                new_bundle = ItemBundle(item=item, quantity=0)
+                self._slots[index] = new_bundle
+
+                amt_left = self._add_quantity_to_bundle(index, amt_left)
+                if amt_left == 0:
+                    return amt_left
+
+        return amt_left
 
     # Remove an exact quantity from the selected slot; the bundle already in that slot
     # determines which item is being removed.
-    def remove_from_slot(self, index, quantity) -> None:
-        pass
+    def remove_from_slot(self, index: int, quantity: int) -> None:
+        self._subtract_quantity_from_bundle(index, quantity)
+
+    # INTERNAL ONLY METHODS
 
     # returns overflow from bundle or 0 if all items added
     def _add_quantity_to_bundle(self, index: int, quantity: int = 1) -> int:
@@ -112,7 +139,7 @@ class Inventory:
     def _subtract_quantity_from_bundle(self, index: int, quantity: int = 1) -> None:
 
         if quantity <= 0:
-            raise ValueError(f"Can't remove {quantity} quantity to an ItemBundle.")
+            raise ValueError(f"Can't remove {quantity} quantity from an ItemBundle.")
 
         self._range_check(index)
 
