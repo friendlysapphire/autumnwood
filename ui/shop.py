@@ -5,6 +5,8 @@ import pygame
 from characters.character import Character
 from characters.npcs import NPC
 
+from items.inventory import SlotContent
+
 # TODO: lot of hard coded values in here that will need updates if we ever change the window size or
 # make it user modifiable
 
@@ -158,9 +160,21 @@ class ShopPanel:
                 self.shop_base_img.blit(slot_img, slot_rect)
                 self.player_slot_rects.append(slot_rect)
 
+    # Draw the player's current bundles into the player-side inventory grid.
     def _blit_player_inventory_to_base(self) -> None:
-        pass
+        self._blit_char_inventory_to_base(self.player.inventory.slots, self.player_slot_rects)
 
+    # Draw the current shopkeeper's stock into the vendor-side inventory grid.
     def _blit_npc_inventory_to_base(self) -> None:
-        pass
+        self._blit_char_inventory_to_base(self.npc_shopkeeper.inventory.slots, self.npc_slot_rects)
+
+    # This panel has 25 visual slots per side. Keep its slot rectangles and layout in
+    # sync before increasing the inventory capacity beyond what the panel can render.
+    # Pair each bundle with its matching panel-local slot rectangle and draw nonempty
+    # bundles centered in their frames.
+    def _blit_char_inventory_to_base(self, bundles: tuple[SlotContent, ...], slot_rects: list[pygame.Rect]) -> None:
+        for bundle, slot_rect in zip(bundles, slot_rects):
+            if bundle is not None:
+                icon_rect = bundle.item.icon_surface.get_rect(center=slot_rect.center)
+                self.shop_base_surface.blit(bundle.item.icon_surface, icon_rect)
 
