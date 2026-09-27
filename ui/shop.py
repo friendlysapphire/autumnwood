@@ -33,6 +33,9 @@ class ShopPanel:
         self.npc_shopkeeper: NPC | None = None
         self.player: Character | None = None
 
+        self.player_slot_rects: list[pygame.Rect] = []
+        self.npc_slot_rects: list[pygame.Rect] = []
+
         if font is None:
             self.font = pygame.font.Font(None, 22)
         else:
@@ -40,6 +43,7 @@ class ShopPanel:
 
         # build a base image w/ all the static components of the shop panel so draw() can 
         # focus on the dynamic bits
+        # this fn also inits self.player_slot_rects and self.npc_slot_rects
         self._init_shop_panel()
 
 
@@ -86,6 +90,8 @@ class ShopPanel:
 
     # INTERNAL ONLY HELPERS
 
+    # initializes and blits shop panel + sets up attributes:
+    # self.npc_slot_rects and self.player_slot_rects
     def _init_shop_panel(self) -> None:
 
         shop_frame_img_path = self.resources_base_path / "UI" / "Frame_bg_big_and_title.png"
@@ -131,13 +137,22 @@ class ShopPanel:
         self.shop_base_img.blit(up_arrow_img, (10,403))
         self.shop_base_img.blit(down_arrow_img, (25,403))
 
-        # add vendor inventory slots
+        # draw npc vendor and player inventory slots and set up internal structs
+
+        slot_width, slot_height = slot_img.get_size()
+
+        # npc
         for y in range(100, 350, 50):
             for x in range(36, 216, 44):
-                self.shop_base_img.blit(slot_img, (x, y))
+                slot_rect = pygame.Rect(x,y,slot_width, slot_height)
+                self.shop_base_img.blit(slot_img, slot_rect)
+                self.npc_slot_rects.append(slot_rect)
 
         # add player inventory slots
         for y in range(100, 350, 50):
             for x in range(511, 731, 44):
-                self.shop_base_img.blit(slot_img, (x, y))
+                slot_rect = pygame.Rect(x,y,slot_width, slot_height)
+                self.shop_base_img.blit(slot_img, slot_rect)
+                self.player_slot_rects.append(slot_rect)
+
 
