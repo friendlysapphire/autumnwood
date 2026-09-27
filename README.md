@@ -27,8 +27,11 @@ The game currently supports:
 - on-screen gameplay notifications
 - map-authored NPC loading, spawning, interaction, and linear dialogue
 - automatic dialogue wrapping and pagination
+- an item catalog, fixed-slot inventories, and independently created vendor stock
+- the first vendor/shop panel layout
 
-Next, Autumnwood will add dialogue choices and the first vendor/shop interface.
+Next, Autumnwood will render inventory contents in the shop, add inventory
+selection/navigation, and implement buy/sell transactions.
 
 ## Documentation
 
@@ -37,6 +40,7 @@ More detailed design notes are in [`docs/`](docs/):
 - [`design-overview.md`](docs/design-overview.md) — overview of the current game architecture
 - [`map-authoring.md`](docs/map-authoring.md) — guide to creating and annotating maps in Tiled
 - [`characters-and-npcs.md`](docs/characters-and-npcs.md) — guide to placing NPCs and authoring dialogue
+- [`items-and-inventory.md`](docs/items-and-inventory.md) — guide to adding items and working with inventories and vendor stock
 - [`regions-and-region-effects.md`](docs/regions-and-region-effects.md) — guide to the region/effect system and adding new region types
 
 ## Development

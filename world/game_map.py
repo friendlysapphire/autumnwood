@@ -175,6 +175,7 @@ class GameMap:
                                 # Map the authored type to the scaffold that defines this NPC's
                                 # visual and collision configuration.
 
+                                # Build separate runtime stock for this vendor rather than sharing default bundles.
                                 inventory = npc_inventories.create_default_traveling_vendor_inventory()
 
                                 vendor1 = NPC(name=obj.name,

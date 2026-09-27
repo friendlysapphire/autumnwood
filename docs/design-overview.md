@@ -18,8 +18,8 @@ and new NPC types.
 -   Python converts Tiled gameplay metadata into runtime objects.
 -   Visual map art and gameplay metadata are often represented
     separately.
--   `Character` owns character state, animation, and character-specific
-    movement math.
+-   `Character` owns character state, animation, character-specific movement
+    math, and its personal inventory.
 -   `GameMap` owns the currently loaded Tiled map and map-derived
     runtime data.
 -   Regions describe areas of the map.
@@ -139,6 +139,7 @@ Constructing a `GameMap` from a `.tmx` path currently:
     objects, and NPCs
 -   resolves each NPC's dialogue from an exact-name override or its
     `NPCType` default
+-   creates fresh runtime inventory stock for each traveling vendor
 -   calculates the map's pixel width and height
 
 Important public state currently includes:
@@ -199,7 +200,7 @@ World Objects / apple_tree
 -> AppleTree
 
 NPCs / traveling_vendor
--> NPC(scaffold=TRAVELING_VENDOR, display_name, interaction definition)
+-> NPC(scaffold=TRAVELING_VENDOR, display_name, interaction definition, fresh inventory)
 ```
 
 The leading underscore marks this loader as an internal implementation
@@ -223,6 +224,7 @@ Current responsibilities include:
 -   animation state and animation timing
 -   calculating proposed movement
 -   character-specific visible-sprite bounds calculations used by movement
+-   inventory
 
 ### Position and spawning
 
@@ -245,6 +247,11 @@ loads. It also holds its resolved `NPCInteractionDefinition`, when it has
 dialogue or another NPC interaction.
 `GameMap` loads that data; `main.py` applies the spawn policy when the
 initial map or a transition destination becomes current.
+
+Every `Character` owns an `Inventory`. The player receives an empty one by
+default. When `GameMap` constructs a traveling vendor, it supplies fresh
+starting stock created by `characters/npc_inventories.py`; each vendor must
+receive separate mutable bundles rather than share one global inventory.
 
 ### Collision rectangle
 

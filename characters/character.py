@@ -11,7 +11,7 @@ from modifiers import SpeedModifier
 type DirectionValue = Literal[-1, 0, 1]
 
 
-# Character owns character-specific state, animation, and movement math.
+# Character owns character-specific state, animation, movement math, and personal inventory.
 # Map collision policy belongs to the movement/world systems instead.
 class Character:
     def __init__(
@@ -27,6 +27,8 @@ class Character:
         self.is_alive = True
         self.scaffold = scaffold
         self.display_name = display_name
+        # Characters always own an Inventory. Callers may provide prebuilt contents;
+        # otherwise this character starts with a new empty inventory.
         self.inventory = inventory if inventory is not None else Inventory()
 
         self.speed = self.scaffold.default_speed
@@ -188,5 +190,4 @@ class Character:
     def __repr__(self) -> str:
         r = f"internal name= {self.name}, display name= {self.display_name}, world xy = {self.world_x},{self.world_y}"
         return r
-
 

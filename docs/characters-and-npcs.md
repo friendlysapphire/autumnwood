@@ -58,9 +58,21 @@ The dialogue panel is intentionally linear for now.
 - Until wrapping uses font pixel measurements, avoid an individual word wider
   than the panel's current character limit; it raises an explicit error.
 
-Dialogue choices, shops, inventory, and branching conversations are future
-work. Do not add a generic dialogue engine before those features have a
-concrete use.
+Dialogue choices and branching conversations are future work. Do not add a
+generic dialogue engine before those features have a concrete use.
+
+## Current vendor stock
+
+Every character now owns an inventory. `GameMap` gives each loaded traveling
+vendor fresh default stock from
+`characters/npc_inventories.py:create_default_traveling_vendor_inventory()`.
+That factory must create a new `Inventory` and new `ItemBundle` objects each
+time, so buying from one vendor never changes another vendor's stock.
+
+The shop panel layout exists, but rendering inventory contents, inventory
+selection/navigation, and buy/sell transactions are still future work. See
+[Items and Inventory](items-and-inventory.md) for the current item and
+inventory model.
 
 ## Add a new NPC type
 

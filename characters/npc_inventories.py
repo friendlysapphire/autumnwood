@@ -4,6 +4,7 @@ from items import item_catalog
 
 
 # Build fresh mutable stock for each newly created generic traveling vendor.
+# Each call creates independent ItemBundles, so vendors never share stock after trades.
 def create_default_traveling_vendor_inventory() -> Inventory:
     return Inventory(initial_inventory=[
         ItemBundle(item=item_catalog.APPLE, quantity=12),

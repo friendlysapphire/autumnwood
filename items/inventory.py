@@ -136,6 +136,7 @@ class Inventory:
 
         return overflow
 
+    # Internally apply an exact slot removal and clear the slot when its bundle reaches zero.
     def _subtract_quantity_from_bundle(self, index: int, quantity: int = 1) -> None:
 
         if quantity <= 0:
