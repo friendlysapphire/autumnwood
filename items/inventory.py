@@ -157,14 +157,19 @@ class Inventory:
         if bundle.quantity == 0:
             self._slots[index] = None
 
-        self._compact()
-
-
     def _range_check(self, index: int) -> None:
         if index < 0 or index > self.num_slots - 1:
             raise IndexError(f"index {index} out of range for this Inventory's # of slots ({self.num_slots}).")
 
-    # TODO
-    # all the Nones should be at the end. shift everything down to make that the case
-    def _compact(self) -> None:
-        pass
+    # currently unused but lurking in case we want to do this in the future
+    
+    # move all non-None bundles to the front of the list and pad out w/ Nones in the back 
+    # (preserves order, gets rid of empty slots interspersed w/ full slots)
+    def _compact_slots(self) -> None:
+        new_slot_list = [slot for slot in self._slots if slot is not None]
+        if (slots_len := len(new_slot_list)) < self.num_slots:
+            for _ in range(slots_len, self.num_slots):
+                new_slot_list.append(None)
+        self._slots = new_slot_list
+
+    
