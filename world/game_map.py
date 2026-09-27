@@ -8,6 +8,7 @@ from characters.character import Character
 from characters.character_scaffolds import TRAVELING_VENDOR
 from characters.npcs import NPC
 from characters.npc_interactions import NPC_INTERACTIONS_BY_NAME, DEFAULT_NPC_INTERACTIONS_BY_TYPE
+from characters import npc_inventories
 from characters.npc_type import NPCType
 from world.region import MapTransitionRegion, QuicksandRegion, Region, RegionType
 from world.world_object import AppleTree, WorldObject, WorldObjectType
@@ -174,6 +175,8 @@ class GameMap:
                                 # Map the authored type to the scaffold that defines this NPC's
                                 # visual and collision configuration.
 
+                                inventory = npc_inventories.create_default_traveling_vendor_inventory()
+
                                 vendor1 = NPC(name=obj.name,
                                               display_name=display_name,
                                               scaffold=TRAVELING_VENDOR,
@@ -181,6 +184,7 @@ class GameMap:
                                               is_interactable_on_spawn=True,
                                               supports_interaction=True,
                                               spawn_on_map_load=spawn_on_map_load,
+                                              inventory=inventory,
                                               initial_x_spawn=obj.x,
                                               initial_y_spawn=obj.y,
                                               interaction_definition=interaction_definition

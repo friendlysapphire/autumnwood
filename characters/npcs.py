@@ -6,6 +6,7 @@ from characters.character import Character, DirectionValue
 from characters.character_scaffolds import CharacterScaffold
 from characters.npc_interactions import NPCInteractionDefinition
 from characters.npc_type import NPCType
+from items.inventory import Inventory
 
 
 # NPC adds map-authored identity and initial-placement data to Character.
@@ -25,12 +26,14 @@ class NPC(Character):
                  initial_y_spawn: float,
                  initial_x_direction: DirectionValue = 0,
                  initial_y_direction: DirectionValue = 0,
-                 interaction_definition: NPCInteractionDefinition | None = None
+                 interaction_definition: NPCInteractionDefinition | None = None,
+                 inventory: Inventory | None = None
                  ):
 
         super().__init__(name=name,
                          display_name=display_name,
-                         scaffold=scaffold)
+                         scaffold=scaffold,
+                         inventory=inventory)
 
         # Store the feet-center location authored by this NPC's point object in Tiled.
         self.initial_x_spawn_loc = initial_x_spawn

@@ -5,6 +5,7 @@ import pygame
 
 from characters.animation_state import AnimationState
 from characters.character_scaffolds import CharacterScaffold
+from items.inventory import Inventory
 from modifiers import SpeedModifier
 
 type DirectionValue = Literal[-1, 0, 1]
@@ -18,13 +19,15 @@ class Character:
         *,
         name: str,
         display_name: str,
-        scaffold: CharacterScaffold
+        scaffold: CharacterScaffold,
+        inventory: Inventory | None = None
     ):
 
         self.name = name
         self.is_alive = True
         self.scaffold = scaffold
         self.display_name = display_name
+        self.inventory = inventory if inventory is not None else Inventory()
 
         self.speed = self.scaffold.default_speed
 
