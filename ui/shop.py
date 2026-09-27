@@ -85,6 +85,9 @@ class ShopPanel:
             footer = "Buy"
             footer_fmt = self.font.render(footer, True, "grey87")
             self.shop_base_surface.blit(footer_fmt, (315, 400))
+
+            self._blit_player_inventory_to_base()
+            self._blit_npc_inventory_to_base()
  
             self.screen.blit(self.shop_base_surface, (96,123))
 
@@ -155,4 +158,9 @@ class ShopPanel:
                 self.shop_base_img.blit(slot_img, slot_rect)
                 self.player_slot_rects.append(slot_rect)
 
+    def blit_player_inventory_to_base(self) -> None:
+        pass
+
+    def _blit_npc_inventory_to_base(self) -> None:
+        pass
 
