@@ -6,6 +6,7 @@ import pygame
 from characters.animation_state import AnimationState
 from characters.character import Character
 from characters.character_scaffolds import ELF_MAGE
+from characters import initial_player_inventory
 from characters.npcs import NPC
 from ui.notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
 from ui.dialogue import DialoguePanel
@@ -211,6 +212,7 @@ def main() -> None:
     # Create the player-controlled Character using the Elf Mage's
     # animation, alignment, collision, and visible-bound settings.
     player = Character(name="player", display_name="Player", scaffold=ELF_MAGE)
+    player.inventory = initial_player_inventory.create_default_player_inventory()
 
     # get player start location
     spawn_x, spawn_y = current_map.get_player_spawn_coords(BEGIN_GAME_SPAWN_NAME)

@@ -3,7 +3,6 @@ from typing import Literal
 
 import pygame
 
-from characters import initial_player_inventory
 from characters.animation_state import AnimationState
 from characters.character_scaffolds import CharacterScaffold
 from items.inventory import Inventory
@@ -33,7 +32,7 @@ class Character:
         self.inventory = (
             inventory 
             if inventory is not None 
-            else initial_player_inventory.create_default_player_inventory()
+            else Inventory()
         )
 
         self.speed = self.scaffold.default_speed
