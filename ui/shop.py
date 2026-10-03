@@ -126,11 +126,11 @@ class ShopPanel:
         self.shop_base_img.blit(shop_inventory_img, (505,40))
 
         # label the vendor's inventory screen
-        vs_label = self.font.render("Vendor Stock", True, "grey87")
+        vs_label = self.font.render("Your Inventory", True, "grey87")
         self.shop_base_img.blit(vs_label, (35, 50))
 
         # label player's inventory screen
-        yi_label = self.font.render("Your Inventory", True, "grey87")
+        yi_label = self.font.render("Vendor Stock", True, "grey87")
         self.shop_base_img.blit(yi_label, (520,50))
 
         # apply the instructional footer
@@ -146,19 +146,21 @@ class ShopPanel:
 
         slot_width, slot_height = slot_img.get_size()
 
-        # npc
+        # player inventory slots
         for y in range(100, 350, 50):
             for x in range(36, 216, 44):
                 slot_rect = pygame.Rect(x,y,slot_width, slot_height)
                 self.shop_base_img.blit(slot_img, slot_rect)
-                self.npc_slot_rects.append(slot_rect)
+                self.player_slot_rects.append(slot_rect)
 
-        # add player inventory slots
+
+        # npc inventory slots
         for y in range(100, 350, 50):
             for x in range(511, 731, 44):
                 slot_rect = pygame.Rect(x,y,slot_width, slot_height)
                 self.shop_base_img.blit(slot_img, slot_rect)
-                self.player_slot_rects.append(slot_rect)
+                self.npc_slot_rects.append(slot_rect)
+
 
     # Draw the player's current bundles into the player-side inventory grid.
     def _blit_player_inventory_to_base(self) -> None:
