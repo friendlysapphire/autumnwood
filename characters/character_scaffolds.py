@@ -34,11 +34,9 @@ class CharacterScaffold:
     visible_right_offset: int
 
     # Define the ordered sprite-sheet frames available for each Character animation state.
-    # TODO 
-    # this is a frozen dataclass but the dict and these rects are mutable. when python 3.15 is avail, make this a frozendict
-    # then just don't worry about the pygame.Rect mutablility.... we're never going to want to hash this. i just 
-    # want to learn about these language features 
-    sprite_animation_rects: dict[AnimationState, tuple[pygame.Rect, ...]]
+    # This frozen mapping prevents changing the available states or frame order. The
+    # pygame.Rect objects themselves remain mutable, but are treated as static authored data.
+    sprite_animation_rects: frozendict[AnimationState, tuple[pygame.Rect, ...]]
 
     sprite_file_path: Path
 
@@ -49,14 +47,14 @@ class CharacterScaffold:
 # -----
 
 # Define the ordered sprite-sheet frames available for each Elf Mage animation state.
-ELF_MAGE_SPRITE_ANIMS = {
+ELF_MAGE_SPRITE_ANIMS = frozendict({
     AnimationState.IDLE : (pygame.Rect(0, 0, 64, 64),
                            pygame.Rect(64, 0, 64, 64)),
     AnimationState.WALKING : (pygame.Rect(0, 64, 64, 64),
                               pygame.Rect(64, 64, 64, 64),
                               pygame.Rect(128, 64, 64, 64))
                            
-}
+})
 
 ELF_MAGE_FILE_PATH = (
     SPRITE_BASE_PATH
@@ -84,7 +82,7 @@ ELF_MAGE = CharacterScaffold(
 # ------
 
 # The vendor sheet has eight 128x128 idle frames in one horizontal row.
-TRAVELING_VENDOR_SPRITE_ANIMS = {
+TRAVELING_VENDOR_SPRITE_ANIMS = frozendict({
     AnimationState.IDLE: (
         pygame.Rect(0, 0, 128, 128),
         pygame.Rect(128, 0, 128, 128),
@@ -95,7 +93,7 @@ TRAVELING_VENDOR_SPRITE_ANIMS = {
         pygame.Rect(768, 0, 128, 128),
         pygame.Rect(896, 0, 128, 128),
     ),
-}
+})
 
 TRAVELING_VENDOR_FILE_PATH = (
     SPRITE_BASE_PATH

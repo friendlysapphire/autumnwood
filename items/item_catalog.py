@@ -114,7 +114,7 @@ IRON_SWORD = Item(
 
 
 # Use this when code has an ItemId but needs the corresponding Item object.
-ITEMS_BY_ID: dict[ItemId, Item] = {
+ITEMS_BY_ID: frozendict[ItemId, Item] = frozendict({
     APPLE.id: APPLE,
     MUSHROOM.id: MUSHROOM,
     MEAT.id: MEAT,
@@ -130,4 +130,4 @@ ITEMS_BY_ID: dict[ItemId, Item] = {
     SPADE.id: SPADE,
     PICK.id: PICK,
     IRON_SWORD.id: IRON_SWORD,
-}
+})

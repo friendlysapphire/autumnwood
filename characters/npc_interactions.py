@@ -44,11 +44,10 @@ generic_map01_vendor = NPCInteractionDefinition(id=NPCType.TRAVELING_VENDOR,
 
 # Exact-NPC entries override the default interaction for their NPCType. NPCs with
 # no named entry resolve through DEFAULT_NPC_INTERACTIONS_BY_TYPE.
-# TODO: when switch to python 3.15, make this a frozendict
-NPC_INTERACTIONS_BY_NAME: dict[ExactNPC: NPCInteractionDefinition] = {
+NPC_INTERACTIONS_BY_NAME: frozendict[ExactNPC, NPCInteractionDefinition] = frozendict({
     ExactNPC.TRAVELING_VENDOR_01: tv_01
-}
+})
 
-DEFAULT_NPC_INTERACTIONS_BY_TYPE: dict[NPCType: NPCInteractionDefinition] = {
+DEFAULT_NPC_INTERACTIONS_BY_TYPE: frozendict[NPCType, NPCInteractionDefinition] = frozendict({
     NPCType.TRAVELING_VENDOR : generic_map01_vendor
-}
+})

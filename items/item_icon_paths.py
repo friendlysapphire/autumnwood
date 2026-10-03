@@ -9,7 +9,7 @@ DARK_PIXEL_UI_PATH = PROJECT_ROOT / "resources" / "spritepacks" / "DarkPixelUI" 
 
 # This maps every available DarkPixelUI item-like image to its stable ItemId.
 # Actual Item objs look to this for icon paths.
-ICON_PATHS_BY_ITEM_ID: dict[ItemId, Path] = {
+ICON_PATHS_BY_ITEM_ID: frozendict[ItemId, Path] = frozendict({
     ItemId.SCROLL: DARK_PIXEL_ICON_PATH / "01_Scroll.png",
     ItemId.RING: DARK_PIXEL_ICON_PATH / "02_Ring.png",
     ItemId.TORCH: DARK_PIXEL_ICON_PATH / "03_Torch.png",
@@ -99,4 +99,4 @@ ICON_PATHS_BY_ITEM_ID: dict[ItemId, Path] = {
     ItemId.EQUIPMENT_NECK: DARK_PIXEL_UI_PATH / "Icon_Eq_neck.png",
     ItemId.EQUIPMENT_PANTS: DARK_PIXEL_UI_PATH / "Icon_Eq_pants.png",
     ItemId.EQUIPMENT_RING: DARK_PIXEL_UI_PATH / "Icon_Eq_ring.png",
-}
+})
