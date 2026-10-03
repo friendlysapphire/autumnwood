@@ -17,7 +17,7 @@ class Item:
     default_gold_value: int
 
     # max ItemBundle size (max size per inventory slot)
-    max_bundle_qty: int = 10000
+    max_bundle_qty: int = 999
 
     # can't set this using post_init because it'll load (in item_catalog.py) before pygame is set up and fail
     @cached_property

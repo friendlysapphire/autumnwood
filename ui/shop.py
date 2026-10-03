@@ -43,6 +43,8 @@ class ShopPanel:
         else:
             self.font = font
 
+        self.quantity_font = pygame.font.Font(None,16)
+
         # build a base image w/ all the static components of the shop panel so draw() can 
         # focus on the dynamic bits
         # this fn also inits self.player_slot_rects and self.npc_slot_rects
@@ -179,4 +181,10 @@ class ShopPanel:
             if bundle is not None:
                 icon_rect = bundle.item.icon_surface.get_rect(center=slot_rect.center)
                 self.shop_base_surface.blit(bundle.item.icon_surface, icon_rect)
+
+                # add quantity
+                if bundle.quantity > 0:
+                    quantity_surface = self.quantity_font.render(str(bundle.quantity), True, "grey87")
+                    quantity_rect = quantity_surface.get_rect(bottomright=(slot_rect.right - 2, slot_rect.bottom - 2))
+                    self.shop_base_surface.blit(quantity_surface, quantity_rect)
 
