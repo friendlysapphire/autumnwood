@@ -3,6 +3,7 @@ from typing import Literal
 
 import pygame
 
+from characters import initial_player_inventory
 from characters.animation_state import AnimationState
 from characters.character_scaffolds import CharacterScaffold
 from items.inventory import Inventory
@@ -28,8 +29,12 @@ class Character:
         self.scaffold = scaffold
         self.display_name = display_name
         # Characters always own an Inventory. Callers may provide prebuilt contents;
-        # otherwise this character starts with a new empty inventory.
-        self.inventory = inventory if inventory is not None else Inventory()
+        # otherwise this character starts with default inv.
+        self.inventory = (
+            inventory 
+            if inventory is not None 
+            else initial_player_inventory.create_default_player_inventory()
+        )
 
         self.speed = self.scaffold.default_speed
 
