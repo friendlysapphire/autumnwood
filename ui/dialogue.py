@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 import pygame
-import sys
 
 from characters.npcs import NPC
 from ui.post_dialogue_menu import PostDialogueMenuType
@@ -60,6 +59,8 @@ class DialoguePanel:
         self.dialogue_panel_surface = pygame.Surface((self.panel_width, self.panel_height), pygame.SRCALPHA)
         self.dialogue_panel_surface.fill((0, 0, 0, self.panel_alpha))
 
+    # Run a paused conversation until the player ends it or its final page requests
+    # a follow-up UI. Normal gameplay does not receive events while this loop runs.
     def run_modal(self,
                   background_image: pygame.Surface,
                   frames_per_second: int,
@@ -78,8 +79,10 @@ class DialoguePanel:
             for event in pygame.event.get():
                         
                 match event.type:
+
                     case pygame.QUIT:
-                        sys.exit(1)
+                        pygame.quit()
+                        raise SystemExit
     
                     case pygame.KEYDOWN:
                         match event.key:
@@ -89,8 +92,8 @@ class DialoguePanel:
                                 self.clear_dialogue()
                                 return None
 
-                            # E advances an active conversation; otherwise it resolves and begins a
-                            # nearby world interaction.
+                            # E advances the current dialogue page. Reaching the final page may return a
+                            # requested follow-up UI for the interaction coordinator to open.
                             case pygame.K_e:
                                     
                                     post_dialogue_info = self.advance_dialogue()
@@ -158,7 +161,8 @@ class DialoguePanel:
 
         if self.dialogue_active:
 
-            # draw the saved background image first then paint the dialog panel over it
+            # Restore the frozen gameplay frame before overlaying this dialogue frame, so
+            # every redraw starts from the same paused world state.
             self.screen.blit(background_image)
 
             # Clear the previous dialogue text before drawing the active page.

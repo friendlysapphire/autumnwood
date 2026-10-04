@@ -52,6 +52,39 @@ class ShopPanel:
         # this fn also inits self.player_slot_rects and self.npc_slot_rects
         self._init_shop_panel()
 
+    # Run the paused shop screen until the player closes it. Shop navigation and
+    # transaction controls will live in this local event loop as the screen grows.
+    def run_modal(self,
+                  background_image: pygame.Surface,
+                  frames_per_second: int,
+                  npc: NPC,
+                  player: Character
+                  ) -> None:
+
+        self.open(npc, player)
+
+        while True:
+
+            # delay fps
+            self.clock.tick(frames_per_second)
+
+            self.draw(background_image)
+
+            for event in pygame.event.get():
+
+                match event.type:
+
+                    case pygame.QUIT:
+                        pygame.quit()
+                        raise SystemExit
+
+                    case pygame.KEYDOWN:
+                        match event.key:
+
+                            # X closes the shop and returns control to normal gameplay.
+                            case pygame.K_x:
+                                self.close()
+                                return
 
     def open(self, npc: NPC, player: Character) -> None:
 
@@ -64,9 +97,6 @@ class ShopPanel:
             self.npc_shopkeeper = npc
             self.player = player
 
-            self.draw()
-
-
     def close(self) -> None:
         self.shop_active = False
         self.current_page_index = 0
@@ -74,8 +104,11 @@ class ShopPanel:
         self.player = None
 
 
-    def draw(self) -> None:
+    def draw(self, background_image: pygame.Surface) -> None:
         if self.shop_active:
+
+            # Restore the frozen world frame before drawing this shop-modal frame over it.
+            self.screen.blit(background_image)
 
             # Clear the previous 
             self.shop_base_surface.fill((0, 0, 0, self.panel_alpha))
@@ -96,6 +129,8 @@ class ShopPanel:
             self._blit_npc_inventory_to_base()
  
             self.screen.blit(self.shop_base_surface, (96,123))
+
+            pygame.display.flip()
 
     # INTERNAL ONLY HELPERS
 
@@ -129,11 +164,11 @@ class ShopPanel:
         self.shop_base_img.blit(shop_inventory_img, (30,40))
         self.shop_base_img.blit(shop_inventory_img, (505,40))
 
-        # label the vendor's inventory screen
+        # label player's inventory screen
         vs_label = self.font.render("Your Inventory", True, "grey87")
         self.shop_base_img.blit(vs_label, (35, 50))
 
-        # label player's inventory screen
+        # label vendor's inventory screen
         yi_label = self.font.render("Vendor Stock", True, "grey87")
         self.shop_base_img.blit(yi_label, (520,50))
 
@@ -189,4 +224,3 @@ class ShopPanel:
                     quantity_surface = self.quantity_font.render(str(bundle.quantity), True, "grey87")
                     quantity_rect = quantity_surface.get_rect(bottomright=(slot_rect.right - 2, slot_rect.bottom - 2))
                     self.shop_base_surface.blit(quantity_surface, quantity_rect)
-
