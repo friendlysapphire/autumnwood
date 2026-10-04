@@ -1,3 +1,4 @@
+from enum import StrEnum
 from pathlib import Path
 
 import pygame
@@ -6,6 +7,10 @@ from characters.character import Character
 from characters.npcs import NPC
 
 from items.inventory import SlotContent
+
+class ShopPanelSide(StrEnum):
+    NPC = "npc"
+    PLAYER = "player"
 
 # TODO: lot of hard coded values in here that will need updates if we ever change the window size or
 # make it user modifiable
@@ -39,6 +44,9 @@ class ShopPanel:
 
         self.player_slot_rects: list[pygame.Rect] = []
         self.npc_slot_rects: list[pygame.Rect] = []
+
+        self.selected_slot = 0
+        self.selected_side = ShopPanelSide.NPC
 
         if font is None:
             self.font = pygame.font.Font(None, 22)
@@ -79,12 +87,49 @@ class ShopPanel:
                         raise SystemExit
 
                     case pygame.KEYDOWN:
+
+                        # TODO: could use divmod() here
+                        if self.selected_slot < 5:
+                            base = 0
+                        elif self.selected_slot < 10:
+                            base = 5
+                        elif self.selected_slot < 15:
+                            base = 10
+                        elif self.selected_slot < 20:
+                            base = 15
+                        else:
+                            base = 20
+
                         match event.key:
 
                             # X closes the shop and returns control to normal gameplay.
                             case pygame.K_x:
                                 self.close()
                                 return
+
+                            case pygame.K_RIGHT:
+                                self.selected_slot = base + (self.selected_slot + 1) % 5
+
+                            case pygame.K_LEFT:
+                                self.selected_slot = base + (self.selected_slot - 1) % 5
+
+                            case pygame.K_DOWN:
+                                self.selected_slot = (self.selected_slot + 5) % 25
+
+                            case pygame.K_UP:
+                                self.selected_slot = (self.selected_slot - 5) % 25
+
+                            case pygame.K_TAB:
+                                if self.selected_side == ShopPanelSide.NPC:
+                                    self.selected_side = ShopPanelSide.PLAYER
+                                else:
+                                    self.selected_side = ShopPanelSide.NPC
+
+                                self.selected_slot = 0
+
+    
+
+                            
 
     def open(self, npc: NPC, player: Character) -> None:
 
@@ -96,12 +141,16 @@ class ShopPanel:
             self.current_page_index = 0
             self.npc_shopkeeper = npc
             self.player = player
+            self.selected_slot = 0
+            self.selected_side = ShopPanelSide.NPC
 
     def close(self) -> None:
         self.shop_active = False
         self.current_page_index = 0
         self.npc_shopkeeper = None
         self.player = None
+        self.selected_slot = 0
+        self.selected_side = ShopPanelSide.NPC
 
 
     def draw(self, background_image: pygame.Surface) -> None:
@@ -120,13 +169,25 @@ class ShopPanel:
             display_name = self.font.render(self.npc_shopkeeper.display_name, True, "grey87")
             self.shop_base_surface.blit(display_name, (25,10))
 
-            # TODO: choose buy/sell based on whether we've selected vendor or player inventory
-            footer = "Buy"
+            footer = "Buy" if self.selected_side == ShopPanelSide.NPC else "Sell"
+
             footer_fmt = self.font.render(footer, True, "grey87")
             self.shop_base_surface.blit(footer_fmt, (315, 400))
 
             self._blit_player_inventory_to_base()
             self._blit_npc_inventory_to_base()
+
+            if self.selected_side == ShopPanelSide.PLAYER:
+                selected_slot_rect = self.player_slot_rects[self.selected_slot]
+            else:
+                selected_slot_rect = self.npc_slot_rects[self.selected_slot]
+
+            pygame.draw.rect(
+                self.shop_base_surface,
+                "gold",
+                selected_slot_rect,
+                width=2,
+                )
  
             self.screen.blit(self.shop_base_surface, (96,123))
 
