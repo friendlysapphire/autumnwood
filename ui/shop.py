@@ -88,7 +88,6 @@ class ShopPanel:
 
                     case pygame.KEYDOWN:
 
-                        # TODO: could use divmod() here
                         row, col = divmod(self.selected_slot, 5)
 
                         match event.key:
