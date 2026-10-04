@@ -160,10 +160,12 @@ def get_closest_npc(character: Character,
 
     return interacting_npc
 
-def begin_interaction(character: Character,
+def begin_interaction(screen: pygame.Surface,
+                      player: Character,
                       target: NPC | WorldObject,
                       notification_panel: NotificationPanel,
-                      dialogue_panel: DialoguePanel
+                      dialogue_panel: DialoguePanel,
+                      shop_panel: ShopPanel
                       ) -> None:
                             
     if isinstance(target, AppleTree):
@@ -174,8 +176,24 @@ def begin_interaction(character: Character,
         notification_panel.set_notification(note)
 
     elif isinstance(target, NPC):
-        print(f"interacting with NPC: {target.name}, {target.display_name}")        
-        dialogue_panel.start_dialogue(target)
+        print(f"interacting with NPC: {target.name}, {target.display_name}")
+
+        paused_background = screen.copy()       
+        post_dialogue_info = dialogue_panel.run_modal(paused_background, FRAMES_PER_SECOND, target)
+
+        # post-dialogue we may transition into a panel, most commonly a vendor shop panel
+        if post_dialogue_info is not None:
+        
+            post_dialogue_menu, npc = post_dialogue_info
+
+            match post_dialogue_menu:
+
+                case PostDialogueMenuType.GENERAL_VENDOR_MENU:
+                    shop_panel.open(npc, player)
+
+
+
+
 
     
 def main() -> None:
@@ -194,13 +212,15 @@ def main() -> None:
                                            alpha=NOTIFICATION_PANEL_ALPHA)
 
     dialogue_panel = DialoguePanel(screen=screen,
-                                 panel_width=DIALOGUE_PANEL_WIDTH,
-                                 panel_height=DIALOGUE_PANEL_HEIGHT,
-                                 window_height=WINDOW_HEIGHT,
-                                 window_width=WINDOW_WIDTH,
-                                 alpha=DIALOGUE_PANEL_ALPHA)
+                                   clock=clock,
+                                    panel_width=DIALOGUE_PANEL_WIDTH,
+                                    panel_height=DIALOGUE_PANEL_HEIGHT,
+                                    window_height=WINDOW_HEIGHT,
+                                    window_width=WINDOW_WIDTH,
+                                    alpha=DIALOGUE_PANEL_ALPHA)
 
     shop_panel = ShopPanel(screen=screen,
+                           clock=clock,
                            resources_base_path= SHOP_RESOURCE_PATH,
                            window_height=WINDOW_HEIGHT,
                            window_width=WINDOW_WIDTH,
@@ -244,7 +264,7 @@ def main() -> None:
         move_attempt_x = False
         move_attempt_y = False
 
-        # get ms since last frame
+        # get ms since last frame and govern speed to FRAMES_PER_SECOND
         elapsed_ms = clock.tick(FRAMES_PER_SECOND)
         delta_secs = elapsed_ms / 1000
 
@@ -263,9 +283,8 @@ def main() -> None:
 
                         # X ends an active conversation without advancing its dialogue.
                         case pygame.K_x:
-                            if dialogue_panel.dialogue_active:
-                                dialogue_panel.clear_dialogue()
-                            elif shop_panel.shop_active:
+
+                            if shop_panel.shop_active:
                                 shop_panel.close()
 
                         # E advances an active conversation; otherwise it resolves and begins a
@@ -274,18 +293,6 @@ def main() -> None:
 
                             if shop_panel.shop_active:
                                 pass
-
-                            elif dialogue_panel.dialogue_active:
-                                post_dialogue_info = dialogue_panel.advance_dialogue()
-
-                                if post_dialogue_info is not None:
-
-                                    post_dialogue_menu, npc = post_dialogue_info
-
-                                    match post_dialogue_menu:
-
-                                        case PostDialogueMenuType.GENERAL_VENDOR_MENU:
-                                            shop_panel.open(npc, player)
 
                             else:
 
@@ -296,16 +303,18 @@ def main() -> None:
                                                                         nearby_world_objects=nearby_world_objects)
 
                                 if target is not None:
-                                    begin_interaction(player,
-                                                    target,
-                                                    notification_panel=notification_panel,
-                                                    dialogue_panel=dialogue_panel)
+                                    begin_interaction(screen,
+                                                      player,
+                                                      target,
+                                                      notification_panel=notification_panel,
+                                                      dialogue_panel=dialogue_panel,
+                                                      shop_panel=shop_panel)
 
         # Clear the previous frame before drawing the map again.
         screen.fill("black")
 
         # Dialogue pauses player input and all movement resolution while it is active.
-        if not dialogue_panel.dialogue_active and not shop_panel.shop_active:
+        if not shop_panel.shop_active:
 
             # get keypresses for player movement, set direction
             pressed_keys = pygame.key.get_pressed()
@@ -419,7 +428,6 @@ def main() -> None:
         # Advance notification lifecycle and draw the panel above the completed world scene.
         notification_panel.update_and_draw(delta_secs=delta_secs)
 
-        dialogue_panel.draw()
         shop_panel.draw()
 
         # Draw optional region and collision debug overlays on top of the completed scene.

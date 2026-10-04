@@ -15,14 +15,16 @@ class ShopPanel:
     def __init__(self,
                  *,
                  screen: pygame.Surface,
+                 clock: pygame.Clock,
                  resources_base_path: Path,
                  window_height: int,
                  window_width: int,
                  alpha:int = 180,
-                 font: pygame.font.Font | None = None
+                 font: pygame.font.Font | None = None,
                  ) -> None:
 
         self.resources_base_path = resources_base_path
+        self.clock = clock
 
         self.window_height = window_height
         self.window_width = window_width

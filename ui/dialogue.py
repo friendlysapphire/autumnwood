@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import pygame
+import sys
 
 from characters.npcs import NPC
 from ui.post_dialogue_menu import PostDialogueMenuType
@@ -12,6 +13,7 @@ class DialoguePanel:
     def __init__(self,
                  *,
                  screen: pygame.Surface,
+                 clock: pygame.time.Clock,
                  panel_width:int,
                  panel_height:int,
                  window_height: int,
@@ -26,6 +28,7 @@ class DialoguePanel:
         self.window_width = window_width
         self.panel_alpha = alpha
         self.screen = screen
+        self.clock = clock
 
         # This temporary character-count limit approximates the body width. Keep it below
         # the visible capacity so continuation pages can append "..." without re-wrapping.
@@ -57,6 +60,46 @@ class DialoguePanel:
         self.dialogue_panel_surface = pygame.Surface((self.panel_width, self.panel_height), pygame.SRCALPHA)
         self.dialogue_panel_surface.fill((0, 0, 0, self.panel_alpha))
 
+    def run_modal(self,
+                  background_image: pygame.Surface,
+                  frames_per_second: int,
+                  speaking_npc: NPC,
+                  ) -> tuple[PostDialogueMenuType, NPC] | None:
+        
+        self.start_dialogue(speaking_npc)
+
+        while True:
+
+            # delay fps
+            self.clock.tick(frames_per_second)
+
+            self.draw(background_image)
+
+            for event in pygame.event.get():
+                        
+                match event.type:
+                    case pygame.QUIT:
+                        sys.exit(1)
+    
+                    case pygame.KEYDOWN:
+                        match event.key:
+
+                            # X ends an active conversation without advancing its dialogue.
+                            case pygame.K_x:
+                                self.clear_dialogue()
+                                return None
+
+                            # E advances an active conversation; otherwise it resolves and begins a
+                            # nearby world interaction.
+                            case pygame.K_e:
+                                    
+                                    post_dialogue_info = self.advance_dialogue()
+
+                                    # advance_dialog calls clear_dialog() if advancing reaches the end.
+                                    if self.dialogue_active == False:
+                                        return post_dialogue_info
+
+
     def start_dialogue(self, speaking_npc: NPC) -> None:
         # Every new conversation begins at its first page, including when the
         # player speaks to the same NPC again.
@@ -75,8 +118,6 @@ class DialoguePanel:
         # Flatten wrapped statements into display pages while preserving conversation order.
         for wrapped_statement in wrapped_statements:
             self.dialogue_pages.extend(self._paginate(wrapped_statement, self.max_newline_chars_above_footer))
-
-        self.draw()
 
     def advance_dialogue(self) -> tuple[PostDialogueMenuType, NPC] | None:
 
@@ -104,7 +145,6 @@ class DialoguePanel:
 
         return None
 
-
     def clear_dialogue(self) -> None:
         # Reset all conversation-specific state so the next interaction begins cleanly.
         self.dialogue_active = False
@@ -114,9 +154,13 @@ class DialoguePanel:
         self.post_dialogue_menu = None
 
     # Draw the active dialogue panel after its current text layout has been composed.
-    def draw(self) -> None:
+    def draw(self, background_image: pygame.Surface) -> None:
 
         if self.dialogue_active:
+
+            # draw the saved background image first then paint the dialog panel over it
+            self.screen.blit(background_image)
+
             # Clear the previous dialogue text before drawing the active page.
             self.dialogue_panel_surface.fill((0, 0, 0, self.panel_alpha))
 
@@ -126,6 +170,7 @@ class DialoguePanel:
             self.dialogue_panel_surface.blit(dialogue_surface, (10,10))
             self.screen.blit(self.dialogue_panel_surface, (20, (self.window_height - self.panel_height) - 5))
 
+            pygame.display.flip()
 
     # INTERNAL METHODS
 
