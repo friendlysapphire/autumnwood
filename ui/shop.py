@@ -89,16 +89,7 @@ class ShopPanel:
                     case pygame.KEYDOWN:
 
                         # TODO: could use divmod() here
-                        if self.selected_slot < 5:
-                            base = 0
-                        elif self.selected_slot < 10:
-                            base = 5
-                        elif self.selected_slot < 15:
-                            base = 10
-                        elif self.selected_slot < 20:
-                            base = 15
-                        else:
-                            base = 20
+                        row, col = divmod(self.selected_slot, 5)
 
                         match event.key:
 
@@ -108,10 +99,10 @@ class ShopPanel:
                                 return
 
                             case pygame.K_RIGHT:
-                                self.selected_slot = base + (self.selected_slot + 1) % 5
+                                self.selected_slot = (row * 5) + (col + 1) % 5
 
                             case pygame.K_LEFT:
-                                self.selected_slot = base + (self.selected_slot - 1) % 5
+                                self.selected_slot = (row * 5) + (col - 1) % 5
 
                             case pygame.K_DOWN:
                                 self.selected_slot = (self.selected_slot + 5) % 25
