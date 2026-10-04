@@ -21,7 +21,7 @@ The files have separate responsibilities:
 |---|---|
 | `items/item_id.py` | Stable internal identities for available item art. |
 | `items/item_icon_paths.py` | Maps an `ItemId` to its DarkPixelUI source image. |
-| `items/item.py` | Defines the immutable `Item` data shape: ID, display name, icon, base gold value, and per-bundle limit. |
+| `items/item.py` | Defines the immutable `Item` data shape: ID, display name, icon, description, base gold value, and per-bundle limit. |
 | `items/item_catalog.py` | Defines actual Autumnwood items such as `APPLE` and exposes `ITEMS_BY_ID`. Not every available source image is an actual game item. |
 | `items/item_bundle.py` | Represents one mutable quantity of one `Item`. |
 | `items/inventory.py` | Stores and moves item bundles between fixed inventory slots. |
@@ -42,6 +42,18 @@ before Pygame creates its display, while `convert_alpha()` requires the display
 to exist. Shop rendering accesses `icon_surface` only after display setup, so
 it is the appropriate time to load and cache the image.
 
+## Item descriptions
+
+Every authored `Item` in `item_catalog.py` receives a short, player-facing
+description. The catalog helper requires one so a new catalog entry cannot
+silently show blank text in the shop.
+
+`MAX_ITEM_DESCRIPTION_CHARS` is currently 40. The shop presents descriptions
+as one line and intentionally does not wrap or paginate them. This is an
+authoring limit rather than a pixel-width guarantee because the Pygame font is
+proportional. If a description visibly exceeds the available detail area,
+shorten that specific description rather than adding layout machinery.
+
 ## Add an actual game item
 
 The source art catalog is intentionally broader than the current game-item
@@ -51,9 +63,10 @@ available; it does not automatically make it a real Autumnwood item.
 To add a real item:
 
 1. Ensure the required `ItemId` and icon-path entry exist.
-2. Add a named `Item` object to `items/item_catalog.py` with its display name
-   and base gold value.
-3. Add that item to `ITEMS_BY_ID`.
+2. Add a named `Item` object to `items/item_catalog.py` with its display name,
+   short player-facing description, and base gold value.
+3. Add that item to `ALL_ITEMS`. `ITEMS_BY_ID` is generated automatically from
+   that tuple.
 4. Use that `Item` when creating an `ItemBundle` for stock, pickups, or a
    future reward.
 
@@ -91,7 +104,7 @@ inventory for every traveling vendor loaded by `GameMap`.
 
 ```text
 player Character
--> empty Inventory
+-> fresh default Inventory from `characters/initial_player_inventory.py`
 
 traveling vendor NPC
 -> fresh default Inventory
@@ -100,12 +113,26 @@ ShopPanel
 -> temporarily references the player and vendor while the shop is open
 ```
 
-The panel does not own either inventory. It will display and later coordinate
-interaction with their contents.
+The panel does not own either inventory. It displays their current contents and
+selection state; future transaction code will coordinate changes to those
+inventories.
 
 ## Current shop limits
 
-The shop panel currently draws its static frame and tracks the 25 visual slot
-rectangles for each side. The next implementation steps are rendering item
-icons and quantities, visual selection, keyboard navigation, prices/gold, and
-buy/sell transactions.
+`ShopPanel.run_modal()` is a blocking UI loop. While it runs, the world remains
+paused and the panel owns shop-specific input and rendering.
+
+The shop currently provides two 25-slot, five-by-five inventory grids:
+
+- item icons and bundle quantities
+- a gold outline around the selected slot
+- arrow-key navigation within the active grid
+- left/right wrapping within the current row and up/down wrapping within the
+  current column
+- Tab to change the active inventory
+- a selected-item description in the center detail area
+- Buy/Sell footer wording based on the active inventory
+
+The current panel does not yet show item prices or player gold, and it does not
+transfer items. Buy/sell transactions and quantity selection remain future
+work.

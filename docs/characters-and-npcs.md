@@ -48,6 +48,8 @@ The dialogue panel is intentionally linear for now.
 - `E` advances display pages and closes after the final page.
 - `X` closes the conversation early.
 - Movement is paused while dialogue is active.
+- Dialogue runs as a blocking modal: it owns its input and redraw loop until
+  it closes or requests a follow-up panel.
 - The panel has one speaker-name row and seven body rows. Statements are
   automatically wrapped and split into additional pages as needed.
 - Author-chosen newline characters are preserved. Use them when a particular
@@ -69,10 +71,10 @@ vendor fresh default stock from
 That factory must create a new `Inventory` and new `ItemBundle` objects each
 time, so buying from one vendor never changes another vendor's stock.
 
-The shop panel layout exists, but rendering inventory contents, inventory
-selection/navigation, and buy/sell transactions are still future work. See
-[Items and Inventory](items-and-inventory.md) for the current item and
-inventory model.
+The shop is a blocking modal panel that displays both inventories, item icons
+and quantities, keyboard selection, and selected-item descriptions. It does
+not yet perform buy/sell transactions. See [Items and Inventory](items-and-inventory.md)
+for the current item, inventory, and shop model.
 
 ## Add a new NPC type
 

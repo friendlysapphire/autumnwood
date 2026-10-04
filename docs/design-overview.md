@@ -128,6 +128,29 @@ They intentionally require no `region_type` metadata. This keeps
 ordinary collision authoring cheap because maps may contain many
 collision rectangles.
 
+## Modal UI flow
+
+`main()` owns normal world updates: map drawing, movement, region effects,
+and ordinary world-interaction discovery. A dialogue or shop panel temporarily
+takes control through its `run_modal()` method instead of adding more branches
+to that normal gameplay loop.
+
+For an NPC interaction, the flow is:
+
+```text
+main begins NPC interaction
+-> copies the completed gameplay screen as a frozen background
+-> DialoguePanel.run_modal() owns dialogue input and redraws
+-> completed dialogue may request ShopPanel.run_modal()
+-> shop reuses the same frozen background
+-> closing the modal returns control to main's normal gameplay loop
+```
+
+While a modal loop runs, the world is intentionally paused: the normal loop
+does not receive its input events or advance movement, camera, character, or
+notification state. Each modal redraws the saved background before drawing its
+own panel, then presents that completed modal frame.
+
 ## `GameMap`
 
 `GameMap` is the runtime representation of one loaded Tiled map.
@@ -249,9 +272,11 @@ dialogue or another NPC interaction.
 initial map or a transition destination becomes current.
 
 Every `Character` owns an `Inventory`. The player receives an empty one by
-default. When `GameMap` constructs a traveling vendor, it supplies fresh
-starting stock created by `characters/npc_inventories.py`; each vendor must
-receive separate mutable bundles rather than share one global inventory.
+default, then `main.py` assigns its fresh starting inventory from
+`characters/initial_player_inventory.py`. When `GameMap` constructs a traveling
+vendor, it supplies fresh starting stock created by
+`characters/npc_inventories.py`; each vendor must receive separate mutable
+bundles rather than share one global inventory.
 
 ### Collision rectangle
 

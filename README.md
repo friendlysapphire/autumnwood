@@ -28,10 +28,10 @@ The game currently supports:
 - map-authored NPC loading, spawning, interaction, and linear dialogue
 - automatic dialogue wrapping and pagination
 - an item catalog, fixed-slot inventories, and independently created vendor stock
-- the first vendor/shop panel layout
+- a blocking vendor/shop panel with inventory icons, quantities, keyboard
+  navigation, selection highlighting, and selected-item descriptions
 
-Next, Autumnwood will render inventory contents in the shop, add inventory
-selection/navigation, and implement buy/sell transactions.
+Next, Autumnwood will add player gold and implement buy/sell transactions.
 
 ## Documentation
 
