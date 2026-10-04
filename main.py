@@ -160,10 +160,14 @@ def get_closest_npc(character: Character,
 
     return interacting_npc
 
-def begin_interaction(character: Character,
+# Start the selected world interaction. NPC interactions run their own modal UI
+# loops, which temporarily pause normal gameplay input and updates.
+def begin_interaction(screen: pygame.Surface,
+                      player: Character,
                       target: NPC | WorldObject,
                       notification_panel: NotificationPanel,
-                      dialogue_panel: DialoguePanel
+                      dialogue_panel: DialoguePanel,
+                      shop_panel: ShopPanel
                       ) -> None:
                             
     if isinstance(target, AppleTree):
@@ -174,10 +178,28 @@ def begin_interaction(character: Character,
         notification_panel.set_notification(note)
 
     elif isinstance(target, NPC):
-        print(f"interacting with NPC: {target.name}, {target.display_name}")        
-        dialogue_panel.start_dialogue(target)
+        print(f"interacting with NPC: {target.name}, {target.display_name}")
 
-    
+        # Preserve the fully drawn gameplay frame so modal panels can redraw it without
+        # advancing the world, camera, characters, or notification lifecycle.
+        paused_background = screen.copy()       
+        post_dialogue_info = dialogue_panel.run_modal(paused_background, FRAMES_PER_SECOND, target)
+
+        # A completed dialogue can request a follow-up modal, such as this vendor shop.
+        # Reuse the same frozen gameplay frame across the handoff.
+        if post_dialogue_info is not None:
+        
+            post_dialogue_menu, npc = post_dialogue_info
+
+            match post_dialogue_menu:
+
+                case PostDialogueMenuType.GENERAL_VENDOR_MENU:
+                    shop_panel.run_modal(paused_background,
+                                         FRAMES_PER_SECOND,
+                                         npc,
+                                         player)
+
+
 def main() -> None:
     # Set up Pygame and create the game window.
     pygame.init()
@@ -194,13 +216,15 @@ def main() -> None:
                                            alpha=NOTIFICATION_PANEL_ALPHA)
 
     dialogue_panel = DialoguePanel(screen=screen,
-                                 panel_width=DIALOGUE_PANEL_WIDTH,
-                                 panel_height=DIALOGUE_PANEL_HEIGHT,
-                                 window_height=WINDOW_HEIGHT,
-                                 window_width=WINDOW_WIDTH,
-                                 alpha=DIALOGUE_PANEL_ALPHA)
+                                   clock=clock,
+                                    panel_width=DIALOGUE_PANEL_WIDTH,
+                                    panel_height=DIALOGUE_PANEL_HEIGHT,
+                                    window_height=WINDOW_HEIGHT,
+                                    window_width=WINDOW_WIDTH,
+                                    alpha=DIALOGUE_PANEL_ALPHA)
 
     shop_panel = ShopPanel(screen=screen,
+                           clock=clock,
                            resources_base_path= SHOP_RESOURCE_PATH,
                            window_height=WINDOW_HEIGHT,
                            window_width=WINDOW_WIDTH,
@@ -244,7 +268,7 @@ def main() -> None:
         move_attempt_x = False
         move_attempt_y = False
 
-        # get ms since last frame
+        # get ms since last frame and govern speed to FRAMES_PER_SECOND
         elapsed_ms = clock.tick(FRAMES_PER_SECOND)
         delta_secs = elapsed_ms / 1000
 
@@ -261,118 +285,93 @@ def main() -> None:
                         case pygame.K_BACKQUOTE:
                             show_map_debug_features = not show_map_debug_features
 
-                        # X ends an active conversation without advancing its dialogue.
-                        case pygame.K_x:
-                            if dialogue_panel.dialogue_active:
-                                dialogue_panel.clear_dialogue()
-                            elif shop_panel.shop_active:
-                                shop_panel.close()
-
-                        # E advances an active conversation; otherwise it resolves and begins a
-                        # nearby world interaction.
+                        # E resolves and begins the nearest eligible world interaction. Open modal
+                        # panels handle their own keys inside their local event loops.
                         case pygame.K_e:
 
-                            if shop_panel.shop_active:
-                                pass
+                            nearby_world_objects = current_map.get_world_objs_intersecting_character(player)
+                            nearby_npcs = current_map.get_interactable_npcs_intersecting_character(player)
+                            target = get_closest_interaction_target(player,
+                                                                    nearby_npcs=nearby_npcs,
+                                                                    nearby_world_objects=nearby_world_objects)
 
-                            elif dialogue_panel.dialogue_active:
-                                post_dialogue_info = dialogue_panel.advance_dialogue()
-
-                                if post_dialogue_info is not None:
-
-                                    post_dialogue_menu, npc = post_dialogue_info
-
-                                    match post_dialogue_menu:
-
-                                        case PostDialogueMenuType.GENERAL_VENDOR_MENU:
-                                            shop_panel.open(npc, player)
-
-                            else:
-
-                                nearby_world_objects = current_map.get_world_objs_intersecting_character(player)
-                                nearby_npcs = current_map.get_interactable_npcs_intersecting_character(player)
-                                target = get_closest_interaction_target(player,
-                                                                        nearby_npcs=nearby_npcs,
-                                                                        nearby_world_objects=nearby_world_objects)
-
-                                if target is not None:
-                                    begin_interaction(player,
+                            if target is not None:
+                                begin_interaction(screen,
+                                                    player,
                                                     target,
                                                     notification_panel=notification_panel,
-                                                    dialogue_panel=dialogue_panel)
+                                                    dialogue_panel=dialogue_panel,
+                                                    shop_panel=shop_panel)
 
         # Clear the previous frame before drawing the map again.
         screen.fill("black")
 
-        # Dialogue pauses player input and all movement resolution while it is active.
-        if not dialogue_panel.dialogue_active and not shop_panel.shop_active:
+        # get keypresses for player movement, set direction
+        pressed_keys = pygame.key.get_pressed()
 
-            # get keypresses for player movement, set direction
-            pressed_keys = pygame.key.get_pressed()
+        if pressed_keys[pygame.K_LEFT]:
+            player.direction_x = -1
+            move_attempt_x = True
+        elif pressed_keys[pygame.K_RIGHT]:
+            player.direction_x = 1
+            move_attempt_x = True
 
-            if pressed_keys[pygame.K_LEFT]:
-                player.direction_x = -1
-                move_attempt_x = True
-            elif pressed_keys[pygame.K_RIGHT]:
-                player.direction_x = 1
-                move_attempt_x = True
-
-            if pressed_keys[pygame.K_UP]:
-                player.direction_y = -1
-                move_attempt_y = True
-            elif pressed_keys[pygame.K_DOWN]:
-                player.direction_y = 1
-                move_attempt_y = True
+        if pressed_keys[pygame.K_UP]:
+            player.direction_y = -1
+            move_attempt_y = True
+        elif pressed_keys[pygame.K_DOWN]:
+            player.direction_y = 1
+            move_attempt_y = True
 
 
-            # Discover effects from the position occupied before movement. These effects can
-            # modify the upcoming move, such as quicksand changing the effective speed.
-            intersecting_regions = current_map.get_regions_intersecting_character(character=player)
-            region_effects = get_active_region_effects(intersecting_regions=intersecting_regions)
+        # Discover effects from the position occupied before movement. These effects can
+        # modify the upcoming move, such as quicksand changing the effective speed.
+        intersecting_regions = current_map.get_regions_intersecting_character(character=player)
+        region_effects = get_active_region_effects(intersecting_regions=intersecting_regions)
 
-            # Extract the speed modifiers currently needed by movement. Other pre-move effect
-            # types can be processed here when a gameplay feature introduces them.
+        # Extract the speed modifiers currently needed by movement. Other pre-move effect
+        # types can be processed here when a gameplay feature introduces them.
 
-            #pre_move_effects = []
-            speed_modifiers = [effect
-                            for effect
-                            in region_effects.pre_move_effects
-                            if isinstance(effect, SpeedRegionEffect)]
+        #pre_move_effects = []
+        speed_modifiers = [effect
+                        for effect
+                        in region_effects.pre_move_effects
+                        if isinstance(effect, SpeedRegionEffect)]
 
-            # TODO: process future pre-move effects other than SpeedModifiers, which affect positioning below.
+        # TODO: process future pre-move effects other than SpeedModifiers, which affect positioning below.
 
-            # Validate and apply the attempted movement against map bounds and obstacles.
-            update_character_position(
-                move_attempt_x=move_attempt_x,
-                move_attempt_y=move_attempt_y,
-                player=player,
-                delta_secs=delta_secs,
-                current_map=current_map,
-                speed_modifiers=speed_modifiers
-            )
+        # Validate and apply the attempted movement against map bounds and obstacles.
+        update_character_position(
+            move_attempt_x=move_attempt_x,
+            move_attempt_y=move_attempt_y,
+            player=player,
+            delta_secs=delta_secs,
+            current_map=current_map,
+            speed_modifiers=speed_modifiers
+        )
 
-            # Rediscover effects from the resolved position. Post-move effects, such as map
-            # transitions, must use this position rather than the one from before movement.
-            intersecting_regions = current_map.get_regions_intersecting_character(character=player)
-            region_effects = get_active_region_effects(intersecting_regions=intersecting_regions)
-            
-            # Process effects triggered by the player's position after movement resolves.
-            for effect in region_effects.post_move_effects:
+        # Rediscover effects from the resolved position. Post-move effects, such as map
+        # transitions, must use this position rather than the one from before movement.
+        intersecting_regions = current_map.get_regions_intersecting_character(character=player)
+        region_effects = get_active_region_effects(intersecting_regions=intersecting_regions)
 
-                if isinstance(effect, MapTransitionRegionEffect):
-                    # Replace the active GameMap, then respawn the existing player at the
-                    # named destination spawn in that map.
-                    dest_path = MAPS_PATH / f"{effect.destination_map}.tmx"
-                    current_map = GameMap(dest_path)
+        # Process effects triggered by the player's position after movement resolves.
+        for effect in region_effects.post_move_effects:
 
-                    spawn_x, spawn_y = current_map.get_player_spawn_coords(effect.destination_spawn)
+            if isinstance(effect, MapTransitionRegionEffect):
+                # Replace the active GameMap, then respawn the existing player at the
+                # named destination spawn in that map.
+                dest_path = MAPS_PATH / f"{effect.destination_map}.tmx"
+                current_map = GameMap(dest_path)
 
-                    player.spawn(spawn_x, spawn_y)
+                spawn_x, spawn_y = current_map.get_player_spawn_coords(effect.destination_spawn)
 
-                    # Apply each destination NPC's map-load policy after replacing the active map.
-                    for npc in current_map.npcs:
-                        if npc.spawn_on_map_load:
-                            npc.spawn_from_initial_map_placement()
+                player.spawn(spawn_x, spawn_y)
+
+                # Apply each destination NPC's map-load policy after replacing the active map.
+                for npc in current_map.npcs:
+                    if npc.spawn_on_map_load:
+                        npc.spawn_from_initial_map_placement()
 
         # Animation follows input intent, even when the map blocks the attempted move.
         # An attempted move also dismisses notifications that use that dismissal policy.
@@ -418,9 +417,6 @@ def main() -> None:
 
         # Advance notification lifecycle and draw the panel above the completed world scene.
         notification_panel.update_and_draw(delta_secs=delta_secs)
-
-        dialogue_panel.draw()
-        shop_panel.draw()
 
         # Draw optional region and collision debug overlays on top of the completed scene.
         if show_map_debug_features:
