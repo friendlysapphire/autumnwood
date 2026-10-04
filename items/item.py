@@ -6,6 +6,8 @@ import pygame
 
 from items.item_id import ItemId
 
+# Keep authored shop descriptions brief; the current shop UI displays them on
+# one line rather than wrapping them.
 MAX_ITEM_DESCRIPTION_CHARS = 40
 
 @dataclass(frozen=True)

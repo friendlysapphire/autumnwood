@@ -6,6 +6,8 @@ from items.item_id import ItemId
 # This is the authored item catalog. The names and values are deliberately kept
 # together here, while ICON_PATHS_BY_ITEM_ID remains the source of icon locations.
 # Values are a first pass and can be rebalanced as real shop gameplay takes shape.
+# Require a description for every authored catalog entry so shop items cannot
+# silently fall back to blank player-facing text.
 def _item(item_id: ItemId, display_name: str, default_gold_value: int, description: str) -> Item:
     return Item(
         id=item_id,

@@ -25,7 +25,7 @@ class ShopPanel:
                  window_height: int,
                  window_width: int,
                  alpha:int = 180,
-                 font: pygame.font.Font | None = None,
+                 header_font: pygame.font.Font | None = None,
                  ) -> None:
 
         self.resources_base_path = resources_base_path
@@ -47,13 +47,18 @@ class ShopPanel:
 
         self.selected_slot = 0
         self.selected_side = ShopPanelSide.NPC
+        # Both inventories share a five-by-five layout, so one index identifies the
+        # selected position on either side of the shop.
 
-        if font is None:
-            self.font = pygame.font.Font(None, 22)
+        # TODO: there are at least 2 mor fonts in use now, call this "header font" or something and 
+        # maybe remove entirely from the constructor
+        if header_font is None:
+            self.header_font = pygame.font.Font(None, 22)
         else:
-            self.font = font
+            self.header_font = header_font
 
         self.quantity_font = pygame.font.Font(None,16)
+        self.description_font = pygame.font.Font(None,17)
 
         # build a base image w/ all the static components of the shop panel so draw() can 
         # focus on the dynamic bits
@@ -88,6 +93,8 @@ class ShopPanel:
 
                     case pygame.KEYDOWN:
 
+                        # Convert the flat slot index into grid coordinates so left and right wrap
+                        # within the current row instead of moving into a different row.
                         row, col = divmod(self.selected_slot, 5)
 
                         match event.key:
@@ -109,6 +116,7 @@ class ShopPanel:
                             case pygame.K_UP:
                                 self.selected_slot = (self.selected_slot - 5) % 25
 
+                            # Start at a predictable valid slot after changing which inventory has focus.
                             case pygame.K_TAB:
                                 if self.selected_side == ShopPanelSide.NPC:
                                     self.selected_side = ShopPanelSide.PLAYER
@@ -116,10 +124,6 @@ class ShopPanel:
                                     self.selected_side = ShopPanelSide.NPC
 
                                 self.selected_slot = 0
-
-    
-
-                            
 
     def open(self, npc: NPC, player: Character) -> None:
 
@@ -156,17 +160,20 @@ class ShopPanel:
             self.shop_base_surface.blit(self.shop_base_img, (0,0))
 
             # add vendor's displayname
-            display_name = self.font.render(self.npc_shopkeeper.display_name, True, "grey87")
+            display_name = self.header_font.render(self.npc_shopkeeper.display_name, True, "grey87")
             self.shop_base_surface.blit(display_name, (25,10))
 
+            # TODO: still needs cleanup. no action is avail if there's nothing in the slot
             footer = "Buy" if self.selected_side == ShopPanelSide.NPC else "Sell"
 
-            footer_fmt = self.font.render(footer, True, "grey87")
+            footer_fmt = self.header_font.render(footer, True, "grey87")
             self.shop_base_surface.blit(footer_fmt, (315, 400))
 
             self._blit_player_inventory_to_base()
             self._blit_npc_inventory_to_base()
 
+            # Select the matching panel-local rect so the gold outline follows the active
+            # inventory while reusing the same slot index.
             if self.selected_side == ShopPanelSide.PLAYER:
                 selected_slot_rect = self.player_slot_rects[self.selected_slot]
             else:
@@ -179,6 +186,17 @@ class ShopPanel:
                 width=2,
                 )
  
+            # Display details for the same active-side slot marked by the gold outline.
+            bundle = (
+                self.player.inventory.slots[self.selected_slot]
+                if self.selected_side == ShopPanelSide.PLAYER
+                else self.npc_shopkeeper.inventory.slots[self.selected_slot]
+            )
+
+            if bundle is not None:
+                desc = self.description_font.render(bundle.item.description, True, "grey87")
+                self.shop_base_surface.blit(desc, (272, 100))
+            
             self.screen.blit(self.shop_base_surface, (96,123))
 
             pygame.display.flip()
@@ -216,16 +234,16 @@ class ShopPanel:
         self.shop_base_img.blit(shop_inventory_img, (505,40))
 
         # label player's inventory screen
-        vs_label = self.font.render("Your Inventory", True, "grey87")
+        vs_label = self.header_font.render("Your Inventory", True, "grey87")
         self.shop_base_img.blit(vs_label, (35, 50))
 
         # label vendor's inventory screen
-        yi_label = self.font.render("Vendor Stock", True, "grey87")
+        yi_label = self.header_font.render("Vendor Stock", True, "grey87")
         self.shop_base_img.blit(yi_label, (520,50))
 
         # apply the instructional footer
         footer = "Select    [Tab] Switch Inventory  [E]            [X] Close Shop"
-        footer_fmt = self.font.render(footer, True, "grey87")
+        footer_fmt = self.header_font.render(footer, True, "grey87")
         self.shop_base_img.blit(footer_fmt, (45, 400))
 
         # up and down arrows
