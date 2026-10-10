@@ -238,6 +238,9 @@ def main() -> None:
     player = Character(name="player", display_name="Player", scaffold=ELF_MAGE)
     player.inventory = initial_player_inventory.create_default_player_inventory()
 
+    # give us a lot of gold
+    player.gold_pieces = 1000
+
     # get player start location
     spawn_x, spawn_y = current_map.get_player_spawn_coords(BEGIN_GAME_SPAWN_NAME)
 

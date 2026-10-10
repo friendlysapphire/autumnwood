@@ -6,6 +6,7 @@ import pygame
 
 from items.item_id import ItemId
 
+# TODO: item probably shouldn't know bout max chars, shop should
 # Keep authored shop descriptions brief; the current shop UI displays them on
 # one line rather than wrapping them.
 MAX_ITEM_DESCRIPTION_CHARS = 40

@@ -20,7 +20,8 @@ class Character:
         name: str,
         display_name: str,
         scaffold: CharacterScaffold,
-        inventory: Inventory | None = None
+        inventory: Inventory | None = None,
+        starting_gold: int | None = 20
     ):
 
         self.name = name
@@ -34,6 +35,8 @@ class Character:
             if inventory is not None 
             else Inventory()
         )
+
+        self.gold_pieces = starting_gold
 
         self.speed = self.scaffold.default_speed
 

@@ -1,4 +1,4 @@
-from enum import StrEnum
+import math
 
 import pygame
 
@@ -6,6 +6,7 @@ from characters.character import Character, DirectionValue
 from characters.character_scaffolds import CharacterScaffold
 from characters.npc_interactions import NPCInteractionDefinition
 from characters.npc_type import NPCType
+from items.item import Item
 from items.inventory import Inventory
 
 
@@ -27,13 +28,19 @@ class NPC(Character):
                  initial_x_direction: DirectionValue = 0,
                  initial_y_direction: DirectionValue = 0,
                  interaction_definition: NPCInteractionDefinition | None = None,
-                 inventory: Inventory | None = None
+                 inventory: Inventory | None = None,
+                 seller_price_markup: float | None = .05,
+                 buyback_price_modifier: float | None = .05
                  ):
 
         super().__init__(name=name,
                          display_name=display_name,
                          scaffold=scaffold,
                          inventory=inventory)
+
+        # if this npc will sell/buyback items, these are the default change from the base gold value of the item
+        self.seller_markup = seller_price_markup
+        self.buyback_price_modifier = buyback_price_modifier
 
         # Store the feet-center location authored by this NPC's point object in Tiled.
         self.initial_x_spawn_loc = initial_x_spawn
@@ -118,6 +125,15 @@ class NPC(Character):
         # Pad the visible bounds evenly to create a talk range, not a physical collision box.
         # TODO: make customizable?
         return pygame.Rect(left - 30, top - 30, width + 60, height + 60)
+
+    def get_stock_price(self, item: Item) -> int:
+        price = math.ceil(item.default_gold_value + (item.default_gold_value * self.seller_markup))
+        return price
+
+    def get_buyback_price(self, item: Item) -> int:
+        price = math.ceil(item.default_gold_value - (item.default_gold_value * self.seller_markup))
+        return max(1, price)
+
 
     def __repr__(self) -> str:
         r = super().__repr__()

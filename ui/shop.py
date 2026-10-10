@@ -58,7 +58,7 @@ class ShopPanel:
             self.header_font = header_font
 
         self.quantity_font = pygame.font.Font(None,16)
-        self.description_font = pygame.font.Font(None,17)
+        self.description_font = pygame.font.Font(None,18)
 
         # build a base image w/ all the static components of the shop panel so draw() can 
         # focus on the dynamic bits
@@ -74,14 +74,14 @@ class ShopPanel:
                   player: Character
                   ) -> None:
 
-        self.open(npc, player)
+        self._open(npc, player)
 
         while True:
 
             # delay fps
             self.clock.tick(frames_per_second)
 
-            self.draw(background_image)
+            self._draw(background_image)
 
             for event in pygame.event.get():
 
@@ -101,7 +101,7 @@ class ShopPanel:
 
                             # X closes the shop and returns control to normal gameplay.
                             case pygame.K_x:
-                                self.close()
+                                self._close()
                                 return
 
                             case pygame.K_RIGHT:
@@ -125,7 +125,7 @@ class ShopPanel:
 
                                 self.selected_slot = 0
 
-    def open(self, npc: NPC, player: Character) -> None:
+    def _open(self, npc: NPC, player: Character) -> None:
 
         if self.shop_active is True:
             raise RuntimeError("Shop is already active, can't open another one.")
@@ -138,7 +138,7 @@ class ShopPanel:
             self.selected_slot = 0
             self.selected_side = ShopPanelSide.NPC
 
-    def close(self) -> None:
+    def _close(self) -> None:
         self.shop_active = False
         self.current_page_index = 0
         self.npc_shopkeeper = None
@@ -147,7 +147,7 @@ class ShopPanel:
         self.selected_side = ShopPanelSide.NPC
 
 
-    def draw(self, background_image: pygame.Surface) -> None:
+    def _draw(self, background_image: pygame.Surface) -> None:
         if self.shop_active:
 
             # Restore the frozen world frame before drawing this shop-modal frame over it.
@@ -194,8 +194,35 @@ class ShopPanel:
             )
 
             if bundle is not None:
+                # item icom
+                icon_rect = bundle.item.icon_surface.get_rect(center=(384, 116))
+                self.shop_base_surface.blit(bundle.item.icon_surface, icon_rect)
+
+                # item name
+                name = self.description_font.render(bundle.item.display_name, True, "grey87")
+                self.shop_base_surface.blit(name, name.get_rect(midtop=(384, 150)))
+
+                # item price
+                if self.selected_side == ShopPanelSide.NPC:
+                    price = self.description_font.render(f"Price per item: {self.npc_shopkeeper.get_stock_price(bundle.item)} gold.",
+                                                         True,
+                                                         "grey87")
+
+                else:
+                    price = self.description_font.render(f"Buyback Price per item: {self.npc_shopkeeper.get_buyback_price(bundle.item)} gold.",
+                                                         True,
+                                                         "grey87")
+                
+                self.shop_base_surface.blit(price, price.get_rect(midtop=(384, 170)))
+
+                # item description
                 desc = self.description_font.render(bundle.item.description, True, "grey87")
-                self.shop_base_surface.blit(desc, (272, 100))
+                self.shop_base_surface.blit(desc, (257, 200))
+
+                # display player gold
+                gold_display_txt = f"Player gold: {self.player.gold_pieces}"
+                gold_display = self.header_font.render(gold_display_txt, True, "grey87")
+                self.shop_base_surface.blit(gold_display, (20, 360))
             
             self.screen.blit(self.shop_base_surface, (96,123))
 
@@ -230,16 +257,16 @@ class ShopPanel:
         self.shop_base_img.blit(shop_frame_img, (0,0))
 
         # add 2 inventory screens
-        self.shop_base_img.blit(shop_inventory_img, (30,40))
-        self.shop_base_img.blit(shop_inventory_img, (505,40))
+        self.shop_base_img.blit(shop_inventory_img, (15,40))
+        self.shop_base_img.blit(shop_inventory_img, (520,40))
 
         # label player's inventory screen
         vs_label = self.header_font.render("Your Inventory", True, "grey87")
-        self.shop_base_img.blit(vs_label, (35, 50))
+        self.shop_base_img.blit(vs_label, (30, 50))
 
         # label vendor's inventory screen
         yi_label = self.header_font.render("Vendor Stock", True, "grey87")
-        self.shop_base_img.blit(yi_label, (520,50))
+        self.shop_base_img.blit(yi_label, (535,50))
 
         # apply the instructional footer
         footer = "Select    [Tab] Switch Inventory  [E]            [X] Close Shop"
@@ -256,7 +283,7 @@ class ShopPanel:
 
         # player inventory slots
         for y in range(100, 350, 50):
-            for x in range(36, 216, 44):
+            for x in range(21, 201, 44):
                 slot_rect = pygame.Rect(x,y,slot_width, slot_height)
                 self.shop_base_img.blit(slot_img, slot_rect)
                 self.player_slot_rects.append(slot_rect)
@@ -264,7 +291,7 @@ class ShopPanel:
 
         # npc inventory slots
         for y in range(100, 350, 50):
-            for x in range(511, 731, 44):
+            for x in range(526, 746, 44):
                 slot_rect = pygame.Rect(x,y,slot_width, slot_height)
                 self.shop_base_img.blit(slot_img, slot_rect)
                 self.npc_slot_rects.append(slot_rect)
