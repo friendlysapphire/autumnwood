@@ -6,6 +6,7 @@ import pygame
 from characters.character import Character
 from characters.npcs import NPC
 
+from items.item_bundle import ItemBundle
 from items.inventory import SlotContent
 
 class ShopPanelSide(StrEnum):
@@ -125,6 +126,42 @@ class ShopPanel:
 
                                 self.selected_slot = 0
 
+                            case pygame.K_e:
+                                # if there's no bundle, don't do anything
+                                bundle = self._get_selected_bundle()
+                                if bundle is not None:
+                                    if self.selected_side == ShopPanelSide.NPC:
+                                        # we're in buy mode
+                                        quantity = 1
+                                        price = self.npc_shopkeeper.get_stock_price(bundle.item) * quantity
+                                        if player.gold_pieces >= price:
+                                            leftover = player.inventory.add_item(item=bundle.item, quantity=quantity)
+                                            if leftover < quantity:
+
+                                                # transaction succeeded, at least in part
+                                                # subtract amt transacted from seller inv,
+                                                #  and decrease player gold
+                                                # TODO: play a sound
+                                                qty_transcacted = quantity - leftover
+                                                final_price = self.npc_shopkeeper.get_stock_price(bundle.item) * qty_transcacted
+                                                player.gold_pieces = player.gold_pieces - final_price
+                                                self.npc_shopkeeper.inventory.remove_item(bundle.item, qty_transcacted)
+
+                                    else:
+                                        # we're in sell mode
+                                        quantity = 1
+                                        leftover = self.npc_shopkeeper.inventory.add_item(item=bundle.item, quantity=quantity)
+                                        if leftover < quantity:
+
+                                            # transaction succeeded, at least in part 
+                                            # subtract amt transacted from buyer inv,
+                                            #  and increase player gold
+                                            # TODO: play a sound
+                                            qty_transcacted = quantity - leftover
+                                            final_price = self.npc_shopkeeper.get_buyback_price(bundle.item) * qty_transcacted
+                                            player.gold_pieces = player.gold_pieces + final_price
+                                            self.player.inventory.remove_item(bundle.item, qty_transcacted)      
+
     def _open(self, npc: NPC, player: Character) -> None:
 
         if self.shop_active is True:
@@ -145,6 +182,12 @@ class ShopPanel:
         self.player = None
         self.selected_slot = 0
         self.selected_side = ShopPanelSide.NPC
+
+    def _get_selected_bundle(self) -> ItemBundle | None:
+        if self.selected_side == ShopPanelSide.NPC:
+            return self.npc_shopkeeper.inventory.slots[self.selected_slot]
+        else:
+            return self.player.inventory.slots[self.selected_slot]
 
 
     def _draw(self, background_image: pygame.Surface) -> None:
@@ -176,8 +219,23 @@ class ShopPanel:
             # inventory while reusing the same slot index.
             if self.selected_side == ShopPanelSide.PLAYER:
                 selected_slot_rect = self.player_slot_rects[self.selected_slot]
+
+                pygame.draw.rect(
+                    self.shop_base_surface,
+                    "slategray1",
+                    self.player_inv_rect,
+                    width=1,
+                    )
+
             else:
                 selected_slot_rect = self.npc_slot_rects[self.selected_slot]
+
+                pygame.draw.rect(
+                    self.shop_base_surface,
+                    "slategray1",
+                    self.vendor_inv_rect,
+                    width=1,
+                    )
 
             pygame.draw.rect(
                 self.shop_base_surface,
@@ -185,13 +243,14 @@ class ShopPanel:
                 selected_slot_rect,
                 width=2,
                 )
+
+            # display player gold
+            gold_display_txt = f"Player gold: {self.player.gold_pieces}"
+            gold_display = self.header_font.render(gold_display_txt, True, "grey87")
+            self.shop_base_surface.blit(gold_display, (20, 360))
  
             # Display details for the same active-side slot marked by the gold outline.
-            bundle = (
-                self.player.inventory.slots[self.selected_slot]
-                if self.selected_side == ShopPanelSide.PLAYER
-                else self.npc_shopkeeper.inventory.slots[self.selected_slot]
-            )
+            bundle = self._get_selected_bundle()
 
             if bundle is not None:
                 # item icom
@@ -218,11 +277,6 @@ class ShopPanel:
                 # item description
                 desc = self.description_font.render(bundle.item.description, True, "grey87")
                 self.shop_base_surface.blit(desc, (257, 200))
-
-                # display player gold
-                gold_display_txt = f"Player gold: {self.player.gold_pieces}"
-                gold_display = self.header_font.render(gold_display_txt, True, "grey87")
-                self.shop_base_surface.blit(gold_display, (20, 360))
             
             self.screen.blit(self.shop_base_surface, (96,123))
 
@@ -257,8 +311,12 @@ class ShopPanel:
         self.shop_base_img.blit(shop_frame_img, (0,0))
 
         # add 2 inventory screens
-        self.shop_base_img.blit(shop_inventory_img, (15,40))
-        self.shop_base_img.blit(shop_inventory_img, (520,40))
+        self.player_inv_rect = shop_inventory_img.get_rect(topleft=(15, 40))
+        self.shop_base_img.blit(shop_inventory_img, self.player_inv_rect)
+
+        self.vendor_inv_rect = shop_inventory_img.get_rect(topleft=(520, 40))
+        self.shop_base_img.blit(shop_inventory_img, self.vendor_inv_rect)
+
 
         # label player's inventory screen
         vs_label = self.header_font.render("Your Inventory", True, "grey87")

@@ -67,6 +67,25 @@ class Inventory:
         self._range_check(index)
         self._slots[index] = bundle
 
+    # Remove requested amount of inventory, throwing if trying to remove more than inventory holds
+    def remove_item(self, item: Item, quantity: int):
+
+        amt_left = quantity
+
+        for index, slot in enumerate(self._slots):
+
+            if slot is not None:
+                if slot.item.id == item.id:
+
+                    can_remove = min(amt_left, slot.quantity)
+                    self._subtract_quantity_from_bundle(index, can_remove)
+                    amt_left -= can_remove
+                    if amt_left == 0:
+                        break
+
+        if amt_left != 0:
+            raise ValueError(f"Tried to remove {quantity} of {item}, which is more than was in inventory.")
+        
     # Add as much of an item as this inventory can hold, returning any quantity that
     # could not fit into compatible bundles or empty slots.
     def add_item(self, item: Item, quantity: int) -> int:
