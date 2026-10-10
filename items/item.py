@@ -6,10 +6,6 @@ import pygame
 
 from items.item_id import ItemId
 
-# TODO: item probably shouldn't know bout max chars, shop should
-# Keep authored shop descriptions brief; the current shop UI displays them on
-# one line rather than wrapping them.
-MAX_ITEM_DESCRIPTION_CHARS = 40
 
 @dataclass(frozen=True)
 class Item:
@@ -30,7 +26,3 @@ class Item:
     @cached_property
     def icon_surface(self) -> pygame.Surface:
         return pygame.image.load(self.icon_path).convert_alpha()
-
-    def __post_init__(self):
-        if len(self.description) > MAX_ITEM_DESCRIPTION_CHARS:
-            raise ValueError(f"Item {self} can not have description longer than {MAX_ITEM_DESCRIPTION_CHARS}")

@@ -1,3 +1,5 @@
+import textwrap
+
 from enum import StrEnum
 from pathlib import Path
 
@@ -61,6 +63,8 @@ class ShopPanel:
         self.quantity_font = pygame.font.Font(None,16)
         self.description_font = pygame.font.Font(None,18)
 
+        self.temporary_message: str | None = None
+
         # build a base image w/ all the static components of the shop panel so draw() can 
         # focus on the dynamic bits
         # this fn also inits self.player_slot_rects and self.npc_slot_rects
@@ -107,15 +111,19 @@ class ShopPanel:
 
                             case pygame.K_RIGHT:
                                 self.selected_slot = (row * 5) + (col + 1) % 5
+                                self.temporary_message = None
 
                             case pygame.K_LEFT:
                                 self.selected_slot = (row * 5) + (col - 1) % 5
+                                self.temporary_message = None
 
                             case pygame.K_DOWN:
                                 self.selected_slot = (self.selected_slot + 5) % 25
+                                self.temporary_message = None
 
                             case pygame.K_UP:
                                 self.selected_slot = (self.selected_slot - 5) % 25
+                                self.temporary_message = None
 
                             # Start at a predictable valid slot after changing which inventory has focus.
                             case pygame.K_TAB:
@@ -125,6 +133,7 @@ class ShopPanel:
                                     self.selected_side = ShopPanelSide.NPC
 
                                 self.selected_slot = 0
+                                self.temporary_message = None
 
                             case pygame.K_e:
                                 # if there's no bundle, don't do anything
@@ -137,30 +146,37 @@ class ShopPanel:
                                         if player.gold_pieces >= price:
                                             leftover = player.inventory.add_item(item=bundle.item, quantity=quantity)
                                             if leftover < quantity:
-
-                                                # transaction succeeded, at least in part
-                                                # subtract amt transacted from seller inv,
-                                                #  and decrease player gold
                                                 # TODO: play a sound
                                                 qty_transcacted = quantity - leftover
                                                 final_price = self.npc_shopkeeper.get_stock_price(bundle.item) * qty_transcacted
                                                 player.gold_pieces = player.gold_pieces - final_price
                                                 self.npc_shopkeeper.inventory.remove_item(bundle.item, qty_transcacted)
+                                                self.temporary_message = (
+                                                    f"Purchased {qty_transcacted} {bundle.item.display_name} "
+                                                    f"for {final_price} gold."
+                                                    )
+                                            else:
+                                                # inventory was full and could not even partially fill
+                                                self.temporary_message = "Inventory full; could not purchase any additional items."    
+                                        else:
+                                            # don't have enough money
+                                            self.temporary_message = "Not enough gold to make that purchase."
+   
 
                                     else:
                                         # we're in sell mode
                                         quantity = 1
                                         leftover = self.npc_shopkeeper.inventory.add_item(item=bundle.item, quantity=quantity)
                                         if leftover < quantity:
-
-                                            # transaction succeeded, at least in part 
-                                            # subtract amt transacted from buyer inv,
-                                            #  and increase player gold
                                             # TODO: play a sound
                                             qty_transcacted = quantity - leftover
                                             final_price = self.npc_shopkeeper.get_buyback_price(bundle.item) * qty_transcacted
                                             player.gold_pieces = player.gold_pieces + final_price
-                                            self.player.inventory.remove_item(bundle.item, qty_transcacted)      
+                                            self.player.inventory.remove_item(bundle.item, qty_transcacted) 
+                                            self.temporary_message = (
+                                                f"Sold {qty_transcacted} {bundle.item.display_name} "
+                                                f"for {final_price} gold."
+                                            )     
 
     def _open(self, npc: NPC, player: Character) -> None:
 
@@ -244,6 +260,12 @@ class ShopPanel:
                 width=2,
                 )
 
+            # display the most recent temp/transaction mgs if not cleared
+            if self.temporary_message is not None:
+                tmp_msg = self.description_font.render(self.temporary_message, True, "grey87")
+                message_rect = tmp_msg.get_rect(midtop=(384, 330))
+                self.shop_base_surface.blit(tmp_msg, message_rect)
+
             # display player gold
             gold_display_txt = f"Player gold: {self.player.gold_pieces}"
             gold_display = self.header_font.render(gold_display_txt, True, "grey87")
@@ -275,8 +297,12 @@ class ShopPanel:
                 self.shop_base_surface.blit(price, price.get_rect(midtop=(384, 170)))
 
                 # item description
-                desc = self.description_font.render(bundle.item.description, True, "grey87")
-                self.shop_base_surface.blit(desc, (257, 200))
+                string_list = textwrap.wrap(bundle.item.description, width=40)
+                line_height = self.description_font.get_linesize()
+
+                for index, desc_str in enumerate(string_list):
+                    desc = self.description_font.render(desc_str, True, "grey87")
+                    self.shop_base_surface.blit(desc, (257, 200 + (index * line_height)))
             
             self.screen.blit(self.shop_base_surface, (96,123))
 
