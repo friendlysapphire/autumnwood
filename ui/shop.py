@@ -301,8 +301,12 @@ class ShopPanel:
                 line_height = self.description_font.get_linesize()
 
                 for index, desc_str in enumerate(string_list):
+                    # max 6 lines, then just cut it off.
+                    if index == 6:
+                        break
                     desc = self.description_font.render(desc_str, True, "grey87")
                     self.shop_base_surface.blit(desc, (257, 200 + (index * line_height)))
+
             
             self.screen.blit(self.shop_base_surface, (96,123))
 
