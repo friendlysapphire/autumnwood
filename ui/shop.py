@@ -190,6 +190,7 @@ class ShopPanel:
             self.player = player
             self.selected_slot = 0
             self.selected_side = ShopPanelSide.NPC
+            self.temporary_message = None
 
     def _close(self) -> None:
         self.shop_active = False
@@ -198,6 +199,7 @@ class ShopPanel:
         self.player = None
         self.selected_slot = 0
         self.selected_side = ShopPanelSide.NPC
+        self.temporary_message = None
 
     def _get_selected_bundle(self) -> ItemBundle | None:
         if self.selected_side == ShopPanelSide.NPC:
@@ -223,10 +225,13 @@ class ShopPanel:
             self.shop_base_surface.blit(display_name, (25,10))
 
             # TODO: still needs cleanup. no action is avail if there's nothing in the slot
-            footer = "Buy" if self.selected_side == ShopPanelSide.NPC else "Sell"
+            if self._get_selected_bundle() is None:
+                footer = "[E] No Item"
+            else:
+                footer = "[E] Buy" if self.selected_side == ShopPanelSide.NPC else "[E] Sell"
 
             footer_fmt = self.header_font.render(footer, True, "grey87")
-            self.shop_base_surface.blit(footer_fmt, (315, 400))
+            self.shop_base_surface.blit(footer_fmt, (362, 400))
 
             self._blit_player_inventory_to_base()
             self._blit_npc_inventory_to_base()
@@ -357,13 +362,9 @@ class ShopPanel:
         self.shop_base_img.blit(yi_label, (535,50))
 
         # apply the instructional footer
-        footer = "Select    [Tab] Switch Inventory  [E]            [X] Close Shop"
+        footer = "[Arrow Keys] Select    [Tab] Switch Inventory                          [X] Close Shop"
         footer_fmt = self.header_font.render(footer, True, "grey87")
-        self.shop_base_img.blit(footer_fmt, (45, 400))
-
-        # up and down arrows
-        self.shop_base_img.blit(up_arrow_img, (10,403))
-        self.shop_base_img.blit(down_arrow_img, (25,403))
+        self.shop_base_img.blit(footer_fmt, (10, 400))
 
         # draw npc vendor and player inventory slots and set up internal structs
 
