@@ -32,6 +32,10 @@ class ShopPanel:
                  ) -> None:
 
         self.resources_base_path = resources_base_path
+        self.resources_base_sprites_path = self.resources_base_path / "spritepacks" / "DarkPixelUI"
+        self.resources_sounds_path = self.resources_base_path / "sounds"
+
+
         self.clock = clock
 
         self.window_height = window_height
@@ -69,6 +73,7 @@ class ShopPanel:
         # focus on the dynamic bits
         # this fn also inits self.player_slot_rects and self.npc_slot_rects
         self._init_shop_panel()
+        self._init_sounds()
 
     # Run the paused shop screen until the player closes it. Shop navigation and
     # transaction controls will live in this local event loop as the screen grows.
@@ -155,6 +160,8 @@ class ShopPanel:
                                                 # the max transactable for an item must be limited to the amount in the selected
                                                 # slot's bundle (even if they have other bundles of the same item elsewhere)
                                                 self.npc_shopkeeper.inventory.remove_from_slot(self.selected_slot, qty_transacted)
+                                                
+                                                self._play_transaction_sound()
                                                 self.temporary_message = (
                                                     f"Purchased {qty_transacted} {bundle.item.display_name} "
                                                     f"for {final_price} gold."
@@ -165,7 +172,6 @@ class ShopPanel:
                                         else:
                                             # don't have enough money
                                             self.temporary_message = "Not enough gold to make that purchase."
-   
 
                                     else:
                                         # we're in sell mode
@@ -181,7 +187,7 @@ class ShopPanel:
                                             # the max transactable for an item must be limited to the amount in the selected
                                             # slot's bundle (even if they have other bundles of the same item elsewhere)
                                             self.player.inventory.remove_from_slot(self.selected_slot, qty_transacted)
-
+                                            self._play_transaction_sound()
                                             self.temporary_message = (
                                                 f"Sold {qty_transacted} {bundle.item.display_name} "
                                                 f"for {final_price} gold."
@@ -329,23 +335,20 @@ class ShopPanel:
 
             pygame.display.flip()
 
-    # INTERNAL ONLY HELPERS
+    def _play_transaction_sound(self) -> None:
+        self.transaction_sound.play()
 
     # initializes and blits shop panel + sets up attributes:
     # self.npc_slot_rects and self.player_slot_rects
     def _init_shop_panel(self) -> None:
 
-        shop_frame_img_path = self.resources_base_path / "UI" / "Frame_bg_big_and_title.png"
-        up_arrow_img_path = self.resources_base_path / "UI" / "Arrow_up.png"
-        down_arrow_img_path = self.resources_base_path / "UI" / "Arrow_down.png"
-        inventory_img_path = self.resources_base_path / "UI" / "Inventory_bg.png"
-        slot_img_path = self.resources_base_path / "UI" / "Icon_Frame.png"
+        shop_frame_img_path = self.resources_base_sprites_path / "UI" / "Frame_bg_big_and_title.png"
+        inventory_img_path = self.resources_base_sprites_path / "UI" / "Inventory_bg.png"
+        slot_img_path = self.resources_base_sprites_path / "UI" / "Icon_Frame.png"
 
         # load images 
         shop_frame_img = pygame.image.load(shop_frame_img_path).convert_alpha()
         shop_inventory_img = pygame.image.load(inventory_img_path).convert_alpha()
-        up_arrow_img = pygame.image.load(up_arrow_img_path).convert_alpha()
-        down_arrow_img = pygame.image.load(down_arrow_img_path).convert_alpha()
         slot_img = pygame.image.load(slot_img_path).convert_alpha()
 
         # the img is 768 x 394. we're adding 32 pixels at the bottom for a 1 line text footer
@@ -397,7 +400,6 @@ class ShopPanel:
                 self.shop_base_img.blit(slot_img, slot_rect)
                 self.npc_slot_rects.append(slot_rect)
 
-
     # Draw the player's current bundles into the player-side inventory grid.
     def _blit_player_inventory_to_base(self) -> None:
         self._blit_char_inventory_to_base(self.player.inventory.slots, self.player_slot_rects)
@@ -421,3 +423,8 @@ class ShopPanel:
                     quantity_surface = self.quantity_font.render(str(bundle.quantity), True, "grey87")
                     quantity_rect = quantity_surface.get_rect(bottomright=(slot_rect.right - 2, slot_rect.bottom - 2))
                     self.shop_base_surface.blit(quantity_surface, quantity_rect)
+
+    def _init_sounds(self) -> None:
+
+        transaction_sound_path = self.resources_sounds_path / "ogg" / "Confirm_tones" / "style4" / "confirm_style_4_004.ogg"
+        self.transaction_sound = pygame.mixer.Sound(str(transaction_sound_path))

@@ -37,7 +37,7 @@ PROJECT_ROOT = Path(__file__).parent
 MAPS_PATH = PROJECT_ROOT / "resources"
 BASE_MAP_PATH = MAPS_PATH / "testmap2.tmx"
 
-SHOP_RESOURCE_PATH = PROJECT_ROOT / "resources" / "spritepacks" / "DarkPixelUI"
+SHOP_RESOURCE_PATH = PROJECT_ROOT / "resources"
 
 BEGIN_GAME_SPAWN_NAME = "player_start"
 
