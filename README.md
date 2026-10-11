@@ -29,9 +29,13 @@ The game currently supports:
 - automatic dialogue wrapping and pagination
 - an item catalog, fixed-slot inventories, and independently created vendor stock
 - a blocking vendor/shop panel with inventory icons, quantities, keyboard
-  navigation, selection highlighting, and selected-item descriptions
+  navigation, selection highlighting, wrapped selected-item descriptions, and
+  player-gold display
+- one-item buy/sell transactions with inventory-capacity and gold checks
+  plus immediate shop feedback
 
-Next, Autumnwood will add player gold and implement buy/sell transactions.
+Next, Autumnwood will add a standalone player-inventory screen, then grow item
+use and other gameplay systems as the game needs them.
 
 ## Documentation
 

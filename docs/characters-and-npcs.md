@@ -72,9 +72,11 @@ That factory must create a new `Inventory` and new `ItemBundle` objects each
 time, so buying from one vendor never changes another vendor's stock.
 
 The shop is a blocking modal panel that displays both inventories, item icons
-and quantities, keyboard selection, and selected-item descriptions. It does
-not yet perform buy/sell transactions. See [Items and Inventory](items-and-inventory.md)
-for the current item, inventory, and shop model.
+and quantities, keyboard selection, selected-item details, player gold, and
+one-item buy/sell transactions. `NPC.get_stock_price()` calculates what the
+player pays; `NPC.get_buyback_price()` calculates what the vendor offers for a
+player item. See [Items and Inventory](items-and-inventory.md) for the current
+item, inventory, and shop model.
 
 ## Add a new NPC type
 

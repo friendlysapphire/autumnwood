@@ -149,7 +149,9 @@ main begins NPC interaction
 While a modal loop runs, the world is intentionally paused: the normal loop
 does not receive its input events or advance movement, camera, character, or
 notification state. Each modal redraws the saved background before drawing its
-own panel, then presents that completed modal frame.
+own panel, then presents that completed modal frame. While open, `ShopPanel`
+temporarily references the player and vendor inventories and updates them only
+for a successful transaction.
 
 ## `GameMap`
 

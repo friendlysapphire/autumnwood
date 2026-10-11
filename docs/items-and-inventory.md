@@ -3,7 +3,8 @@
 Use this guide when adding an actual game item, creating starting stock, or
 working with an inventory. The current system is deliberately a small
 foundation for shop stock and future player items; it does not yet implement
-equipment, consumable effects, gold, or buy/sell transactions.
+equipment or consumable effects. It does support player gold and basic
+one-item shop transactions.
 
 ## Item data flow
 
@@ -48,11 +49,11 @@ Every authored `Item` in `item_catalog.py` receives a short, player-facing
 description. The catalog helper requires one so a new catalog entry cannot
 silently show blank text in the shop.
 
-`MAX_ITEM_DESCRIPTION_CHARS` is currently 40. The shop presents descriptions
-as one line and intentionally does not wrap or paginate them. This is an
-authoring limit rather than a pixel-width guarantee because the Pygame font is
-proportional. If a description visibly exceeds the available detail area,
-shorten that specific description rather than adding layout machinery.
+`Item` keeps the authored description without imposing a shop-layout limit.
+The current `ShopPanel` wraps text at 40 characters, renders at most six lines,
+and discards any remaining wrapped lines. This is a practical current UI rule,
+not a pixel-width guarantee because the Pygame font is proportional. Keep
+descriptions concise and inspect them in the shop when authoring longer text.
 
 ## Add an actual game item
 
@@ -113,9 +114,8 @@ ShopPanel
 -> temporarily references the player and vendor while the shop is open
 ```
 
-The panel does not own either inventory. It displays their current contents and
-selection state; future transaction code will coordinate changes to those
-inventories.
+The panel does not own either inventory. It temporarily displays their current
+contents and coordinates successful transactions between them.
 
 ## Current shop limits
 
@@ -130,9 +130,21 @@ The shop currently provides two 25-slot, five-by-five inventory grids:
 - left/right wrapping within the current row and up/down wrapping within the
   current column
 - Tab to change the active inventory
-- a selected-item description in the center detail area
-- Buy/Sell footer wording based on the active inventory
+- selected-item icon, name, price, and wrapped description in the center detail
+  area
+- displayed player gold
+- Buy/Sell footer wording based on the active inventory and selected slot
+- `E` to buy one item from vendor stock or sell one item from the player
+  inventory
+- a temporary success or failure message after a transaction attempt
 
-The current panel does not yet show item prices or player gold, and it does not
-transfer items. Buy/sell transactions and quantity selection remain future
-work.
+The selected `ItemBundle` slot is the transaction source. A transaction removes
+from that exact selected slot rather than treating every matching item in an
+inventory as one shared pile. Consequently, future quantity selection must not
+offer more than the selected bundle contains.
+
+Before changing either inventory, the panel checks whether the player has
+enough gold for a purchase and whether the receiving inventory can accept an
+item. A failed transfer leaves both inventories and gold unchanged. The current
+shop intentionally transfers one item per `E` press; quantity selection remains
+future work.
