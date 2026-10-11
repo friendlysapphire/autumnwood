@@ -147,17 +147,21 @@ class ShopPanel:
                                             leftover = player.inventory.add_item(item=bundle.item, quantity=quantity)
                                             if leftover < quantity:
                                                 # TODO: play a sound
-                                                qty_transcacted = quantity - leftover
-                                                final_price = self.npc_shopkeeper.get_stock_price(bundle.item) * qty_transcacted
+                                                qty_transacted = quantity - leftover
+                                                final_price = self.npc_shopkeeper.get_stock_price(bundle.item) * qty_transacted
                                                 player.gold_pieces = player.gold_pieces - final_price
-                                                self.npc_shopkeeper.inventory.remove_item(bundle.item, qty_transcacted)
+
+                                                # NOTE the below implementation detail means when quantity selection goes into UI
+                                                # the max transactable for an item must be limited to the amount in the selected
+                                                # slot's bundle (even if they have other bundles of the same item elsewhere)
+                                                self.npc_shopkeeper.inventory.remove_from_slot(self.selected_slot, qty_transacted)
                                                 self.temporary_message = (
-                                                    f"Purchased {qty_transcacted} {bundle.item.display_name} "
+                                                    f"Purchased {qty_transacted} {bundle.item.display_name} "
                                                     f"for {final_price} gold."
                                                     )
                                             else:
                                                 # inventory was full and could not even partially fill
-                                                self.temporary_message = "Inventory full; could not purchase any additional items."    
+                                                self.temporary_message = "Player inventory full; could not purchase any additional items."    
                                         else:
                                             # don't have enough money
                                             self.temporary_message = "Not enough gold to make that purchase."
@@ -169,14 +173,22 @@ class ShopPanel:
                                         leftover = self.npc_shopkeeper.inventory.add_item(item=bundle.item, quantity=quantity)
                                         if leftover < quantity:
                                             # TODO: play a sound
-                                            qty_transcacted = quantity - leftover
-                                            final_price = self.npc_shopkeeper.get_buyback_price(bundle.item) * qty_transcacted
+                                            qty_transacted = quantity - leftover
+                                            final_price = self.npc_shopkeeper.get_buyback_price(bundle.item) * qty_transacted
                                             player.gold_pieces = player.gold_pieces + final_price
-                                            self.player.inventory.remove_item(bundle.item, qty_transcacted) 
+
+                                            # NOTE the below implementation detail means when quantity selection goes into UI
+                                            # the max transactable for an item must be limited to the amount in the selected
+                                            # slot's bundle (even if they have other bundles of the same item elsewhere)
+                                            self.player.inventory.remove_from_slot(self.selected_slot, qty_transacted)
+
                                             self.temporary_message = (
-                                                f"Sold {qty_transcacted} {bundle.item.display_name} "
+                                                f"Sold {qty_transacted} {bundle.item.display_name} "
                                                 f"for {final_price} gold."
-                                            )     
+                                            )  
+                                        else:
+                                            # inventory was full and could not even partially fill
+                                            self.temporary_message = "Vendor inventory full; could not sell items."   
 
     def _open(self, npc: NPC, player: Character) -> None:
 
