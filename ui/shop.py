@@ -426,5 +426,5 @@ class ShopPanel:
 
     def _init_sounds(self) -> None:
 
-        transaction_sound_path = self.resources_sounds_path / "ogg" / "Confirm_tones" / "style4" / "confirm_style_4_004.ogg"
+        transaction_sound_path = self.resources_sounds_path / "ogg" / "Confirm_tones" / "style5" / "confirm_style_5_001.ogg"
         self.transaction_sound = pygame.mixer.Sound(str(transaction_sound_path))

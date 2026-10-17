@@ -10,6 +10,7 @@ from characters import initial_player_inventory
 from characters.npcs import NPC
 from ui.notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
 from ui.dialogue import DialoguePanel
+from ui.inventory_panel import PlayerInventoryPanel
 from ui.post_dialogue_menu import PostDialogueMenuType
 from ui.shop import ShopPanel
 from rendering.camera import get_clamped_camera_position
@@ -229,6 +230,7 @@ def main() -> None:
                            window_height=WINDOW_HEIGHT,
                            window_width=WINDOW_WIDTH,
                            alpha=DIALOGUE_PANEL_ALPHA)
+
     
     # Load the initial map, which owns its runtime regions, world objects, and dimensions.
     current_map = GameMap(BASE_MAP_PATH)
@@ -240,6 +242,15 @@ def main() -> None:
 
     # give us a lot of gold
     player.gold_pieces = 1000
+
+    player_inventory_panel = PlayerInventoryPanel(screen=screen,
+                                                  clock=clock,
+                                                  resources_base_path= SHOP_RESOURCE_PATH,
+                                                  window_height=WINDOW_HEIGHT,
+                                                  window_width=WINDOW_WIDTH,
+                                                  player=player,
+                                                  alpha=DIALOGUE_PANEL_ALPHA)
+
 
     # get player start location
     spawn_x, spawn_y = current_map.get_player_spawn_coords(BEGIN_GAME_SPAWN_NAME)
@@ -287,6 +298,10 @@ def main() -> None:
 
                         case pygame.K_BACKQUOTE:
                             show_map_debug_features = not show_map_debug_features
+
+                        case pygame.K_i:
+                            paused_background = screen.copy()
+                            player_inventory_panel.run_modal(paused_background, FRAMES_PER_SECOND)
 
                         # E resolves and begins the nearest eligible world interaction. Open modal
                         # panels handle their own keys inside their local event loops.
