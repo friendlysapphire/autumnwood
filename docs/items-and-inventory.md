@@ -1,10 +1,9 @@
 # Items and Inventory
 
 Use this guide when adding an actual game item, creating starting stock, or
-working with an inventory. The current system is deliberately a small
-foundation for shop stock and future player items; it does not yet implement
-equipment or consumable effects. It does support player gold and basic
-one-item shop transactions.
+working with an inventory. The current system supports player inventory,
+gold, and basic one-item shop transactions. Equipment and consumable effects
+are not implemented yet.
 
 ## Item data flow
 
@@ -26,6 +25,7 @@ The files have separate responsibilities:
 | `items/item_catalog.py` | Defines actual Autumnwood items such as `APPLE` and exposes `ITEMS_BY_ID`. Not every available source image is an actual game item. |
 | `items/item_bundle.py` | Represents one mutable quantity of one `Item`. |
 | `items/inventory.py` | Stores and moves item bundles between fixed inventory slots. |
+| `items/item_use.py` | Provides item action labels and applies implemented item-use behavior. |
 
 An `Item` is the shared fact sheet for a kind of item. An `ItemBundle` is a
 particular changing pile, such as twelve Apples owned by a vendor. Never use
@@ -54,6 +54,8 @@ The current `ShopPanel` wraps text at 40 characters, renders at most six lines,
 and discards any remaining wrapped lines. This is a practical current UI rule,
 not a pixel-width guarantee because the Pygame font is proportional. Keep
 descriptions concise and inspect them in the shop when authoring longer text.
+The player inventory panel wraps at 30 characters and also displays at most six
+lines, so check longer descriptions there as well.
 
 ## Add an actual game item
 
@@ -116,6 +118,26 @@ ShopPanel
 
 The panel does not own either inventory. It temporarily displays their current
 contents and coordinates successful transactions between them.
+
+## Player inventory and item use
+
+Press `I` during gameplay to open the player inventory. The blocking panel
+pauses the world; arrow keys select a slot and `X` closes it. It displays item
+icons, quantities, details, and player gold. For an item with an action, the
+footer shows `[E]` and its action label; pressing `E` uses the selected item.
+Empty slots and items without an action ignore `E`.
+
+To add an item action, update both `get_item_action()` and `use_item()` in
+`items/item_use.py`. The first returns the UI label or `None`; the second
+performs the action on the character's selected inventory slot and returns
+feedback intended to follow `You ` in the panel. The caller must check for an
+action first and not change the slot between that check and the call.
+`use_item()` raises for an empty slot or unsupported item.
+
+Currently, eating an apple removes one from the selected slot and displays a
+message. Health and the apple's actual health effect are not implemented yet.
+Interacting with an apple tree adds one apple when inventory space is available;
+the tree currently has an unlimited supply.
 
 ## Current shop limits
 

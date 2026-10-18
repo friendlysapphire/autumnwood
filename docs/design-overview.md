@@ -131,7 +131,7 @@ collision rectangles.
 ## Modal UI flow
 
 `main()` owns normal world updates: map drawing, movement, region effects,
-and ordinary world-interaction discovery. A dialogue or shop panel temporarily
+and ordinary world-interaction discovery. A dialogue, shop, or player inventory panel temporarily
 takes control through its `run_modal()` method instead of adding more branches
 to that normal gameplay loop.
 
@@ -145,6 +145,9 @@ main begins NPC interaction
 -> shop reuses the same frozen background
 -> closing the modal returns control to main's normal gameplay loop
 ```
+
+During gameplay, `I` similarly opens `PlayerInventoryPanel.run_modal()` over
+a frozen background; closing it returns to the normal loop.
 
 While a modal loop runs, the world is intentionally paused: the normal loop
 does not receive its input events or advance movement, camera, character, or
@@ -479,9 +482,9 @@ player presses E while no dialogue is active
 -> NPC interaction starts dialogue
 ```
 
-The current apple-tree interaction is intentionally simple. It proves
-that Tiled-authored world objects can become runtime objects and
-participate in player interaction.
+The apple tree adds one apple to the player's inventory when space is
+available and displays a success or failure notification. Its supply is
+currently unlimited.
 
 ### Current interaction range
 
@@ -579,7 +582,8 @@ the NPC display name, seven body rows, and control instructions.
 
 Author-chosen newline characters are preserved during wrapping. Each display
 page contains at most seven body rows; `...` marks a page that continues the
-same authored statement. Dialogue choices and shop UI remain future work.
+same authored statement. Dialogue choices remain future work; a completed
+vendor conversation can open the shop panel.
 
 ## Map loading and transitions
 
@@ -604,9 +608,9 @@ Python resolves them to `.tmx` files under the maps/resources path.
 The current frame flow is approximately:
 
 ``` text
-1. Read discrete Pygame events such as quit, debug toggle, and dialogue input.
-2. Advance or end active dialogue with E/X; otherwise let E resolve a world interaction.
-3. When no dialogue is active, read held movement keys and set player direction / movement-attempt flags.
+1. Read discrete Pygame events such as quit, debug toggle, inventory, and interaction input.
+2. Open a blocking modal when requested, or let E resolve a world interaction.
+3. Read held movement keys and set player direction / movement-attempt flags.
 4. Ask GameMap which regions intersect the player's current position.
 5. Translate those regions into active region effects.
 6. Collect pre-move effects such as SpeedModifiers.
@@ -619,7 +623,7 @@ The current frame flow is approximately:
 13. Calculate camera position.
 14. Draw the map.
 15. Advance and draw the player and any spawned NPCs.
-16. Update/draw active notification and dialogue panels.
+16. Update and draw the active notification panel.
 17. Draw optional debug overlays.
 18. Flip the completed frame to the display.
 ```
@@ -800,8 +804,9 @@ movement / maps / camera
 -> first NPC map loading / spawning / rendering
 -> linear NPC dialogue panel with wrapping/pagination and generic NPCType dialogue fallback
 -> per-animation-state sprite sources when a moving Epic RPG character needs them
--> dialogue choices and vendor interaction flow
--> inventory as real interactions require it
+-> vendor shop and player inventory panels
+-> character health and apple health effect
+-> dialogue choices and expanded vendor interaction flow
 -> stateful world objects and pickups when an interaction needs runtime state
 -> health / damage
 -> contextual traversal and blocking
@@ -833,9 +838,8 @@ Important roadmap notes:
 -   Do not build NPC AI, pathfinding, or a generalized dialogue engine
     before dialogue choices or real vendor interactions show what is
     actually needed.
--   Do not build inventory, harvesting, respawn, or a generalized item
-    system merely because the apple tree exists; add those when an
-    actual interaction requires them.
+-   Expand harvesting, respawn, and item behavior when actual interactions
+    require them, rather than building a generalized system in advance.
 -   Do not build the final large overworld yet.
 -   Near the content phase, prototype overworld scale with crude maps
     and actual travel time before committing to final dimensions.
