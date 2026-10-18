@@ -10,6 +10,7 @@ from characters.npcs import NPC
 
 from items.item_bundle import ItemBundle
 from items.inventory import SlotContent
+from items.item_use import get_item_action, use_item
 
 
 # TODO: lot of hard coded values in here that will need updates if we ever change the window size or
@@ -99,6 +100,7 @@ class PlayerInventoryPanel:
                                 self._close()
                                 return
 
+                            # Clear the previous use message when moving to another slot.
                             case pygame.K_RIGHT:
                                 self.selected_slot = (row * 5) + (col + 1) % 5
                                 self.temporary_message = None
@@ -115,6 +117,14 @@ class PlayerInventoryPanel:
                                 self.selected_slot = (self.selected_slot - 5) % 25
                                 self.temporary_message = None
 
+                            case pygame.K_e:
+                                # Use the same action lookup as the footer so E does nothing for an empty
+                                # slot or an item with no available action.
+                                bundle = self.player.inventory.get_bundle(self.selected_slot)
+                                if bundle is not None and get_item_action(bundle.item) is not None:
+                                    self.temporary_message = "You "
+                                    self.temporary_message += use_item(self.player,self.selected_slot)
+                                    
     def _open(self) -> None:
 
         if self.panel_active is True:
@@ -160,19 +170,17 @@ class PlayerInventoryPanel:
 
             # display the current temporary message, if there is one
             if self.temporary_message is not None:
-                tmp_msg = self.description_font.render(self.temporary_message, True, "grey87")
-                message_rect = tmp_msg.get_rect(midtop=(384, 330))
-                self.panel_base_surface.blit(tmp_msg, message_rect)
+                tmp_msg = self.header_font.render(self.temporary_message, True, "gold1")
+                self.panel_base_surface.blit(tmp_msg, (35, 435))
 
             # display player gold
             gold_display_txt = f"Player gold: {self.player.gold_pieces}"
             gold_display = self.header_font.render(gold_display_txt, True, "grey87")
             self.panel_base_surface.blit(gold_display, (282, 370))
  
-            # Display details for the same active-side slot marked by the gold outline.
+            # Display details for the slot marked by the gold outline.
             bundle = self._get_selected_bundle()
 
-            
             if bundle is not None:
                 # item icon
                 icon_rect = bundle.item.icon_surface.get_rect(center=(390, 135))
@@ -192,9 +200,13 @@ class PlayerInventoryPanel:
                         break
                     desc = self.description_font.render(desc_str, True, "grey87")
                     self.panel_base_surface.blit(desc, (282, 210 + (index * line_height)))
-        
 
-            
+                # if item is usable, show the [E] <appopriate verb> text
+                if (action := get_item_action(bundle.item)) is not None:
+                    footer = f"[E] {action}"
+                    footer_fmt = self.header_font.render(footer, True, "grey87")
+                    self.panel_base_surface.blit(footer_fmt, (344, 470))
+        
             # Slot coordinates above are panel-local; center the completed panel in the window.
             panel_rect = self.panel_base_surface.get_rect(center=self.screen.get_rect().center)
 
@@ -243,7 +255,7 @@ class PlayerInventoryPanel:
         self.panel_base_img.blit(inv_text, (36, 90))
 
         # apply the instructional footer
-        footer = "[Arrow Keys] Select [X] Close Inventory"
+        footer = "[Arrow Keys] Select  [X] Close Inventory"
         footer_fmt = self.header_font.render(footer, True, "grey87")
         self.panel_base_img.blit(footer_fmt, (35, 470))
 

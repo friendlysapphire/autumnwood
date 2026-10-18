@@ -174,7 +174,7 @@ def begin_interaction(screen: pygame.Surface,
                             
     if isinstance(target, AppleTree):
 
-        leftover = player.inventory.add_item(item_catalog.APPLE, 1)
+        leftover = player.inventory.add_item(item_catalog.APPLE)
         if leftover == 0:
             note = GameNotification("You picked an apple from the tree",
                                     GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)

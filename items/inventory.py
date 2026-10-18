@@ -58,17 +58,17 @@ class Inventory:
         return tuple(self._slots)
 
     # Return a valid slot's bundle, or None when that slot is currently empty.
-    def get_bundle(self, index: int) -> SlotContent:
-        self._range_check(index)
-        return self._slots[index]
+    def get_bundle(self, slot_index: int) -> SlotContent:
+        self._range_check(slot_index)
+        return self._slots[slot_index]
 
     # place a bundle (or None) at an index, replacing whatever was at that index and not shifting elements
-    def place_bundle(self, bundle: SlotContent, index: int) -> None:
-        self._range_check(index)
-        self._slots[index] = bundle
+    def place_bundle(self, bundle: SlotContent, slot_index: int) -> None:
+        self._range_check(slot_index)
+        self._slots[slot_index] = bundle
 
     # Remove requested amount of inventory, throwing if trying to remove more than inventory holds
-    def remove_item(self, item: Item, quantity: int):
+    def remove_item(self, item: Item, quantity: int = 1):
 
         amt_left = quantity
 
@@ -88,7 +88,7 @@ class Inventory:
         
     # Add as much of an item as this inventory can hold, returning any quantity that
     # could not fit into compatible bundles or empty slots.
-    def add_item(self, item: Item, quantity: int) -> int:
+    def add_item(self, item: Item, quantity: int = 1) -> int:
 
         amt_left = quantity
 
@@ -128,8 +128,8 @@ class Inventory:
 
     # Remove an exact quantity from the selected slot; the bundle already in that slot
     # determines which item is being removed.
-    def remove_from_slot(self, index: int, quantity: int) -> None:
-        self._subtract_quantity_from_bundle(index, quantity)
+    def remove_from_slot(self, slot_index: int, quantity: int = 1) -> None:
+        self._subtract_quantity_from_bundle(slot_index, quantity)
 
     # INTERNAL ONLY METHODS
 
