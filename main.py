@@ -8,6 +8,7 @@ from characters.character import Character
 from characters.character_scaffolds import ELF_MAGE
 from characters import initial_player_inventory
 from characters.npcs import NPC
+from items import item_catalog
 from ui.notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
 from ui.dialogue import DialoguePanel
 from ui.inventory_panel import PlayerInventoryPanel
@@ -173,7 +174,12 @@ def begin_interaction(screen: pygame.Surface,
                             
     if isinstance(target, AppleTree):
 
-        note = GameNotification("You interacted with an Apple Tree!",
+        leftover = player.inventory.add_item(item_catalog.APPLE, 1)
+        if leftover == 0:
+            note = GameNotification("You picked an apple from the tree",
+                                    GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
+        else:
+            note = GameNotification("Inventory full, could not add picked apple to inventory.",
                                     GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
 
         notification_panel.set_notification(note)
