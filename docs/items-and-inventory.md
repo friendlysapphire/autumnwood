@@ -2,8 +2,8 @@
 
 Use this guide when adding an actual game item, creating starting stock, or
 working with an inventory. The current system supports player inventory,
-gold, and basic one-item shop transactions. Equipment and consumable effects
-are not implemented yet.
+gold, basic one-item shop transactions, and the first consumable effect.
+Equipment and most item actions are not implemented yet.
 
 ## Item data flow
 
@@ -21,8 +21,9 @@ The files have separate responsibilities:
 |---|---|
 | `items/item_id.py` | Stable internal identities for available item art. |
 | `items/item_icon_paths.py` | Maps an `ItemId` to its DarkPixelUI source image. |
-| `items/item.py` | Defines the immutable `Item` data shape: ID, display name, icon, description, base gold value, and per-bundle limit. |
+| `items/item.py` | Defines the immutable `Item` data shape: ID, display name, icon, description, base gold value, per-bundle limit, and optional action words. |
 | `items/item_catalog.py` | Defines actual Autumnwood items such as `APPLE` and exposes `ITEMS_BY_ID`. Not every available source image is an actual game item. |
+| `items/action_words.py` | Defines reusable present-tense/past-tense action-word pairs for authored items. |
 | `items/item_bundle.py` | Represents one mutable quantity of one `Item`. |
 | `items/inventory.py` | Stores and moves item bundles between fixed inventory slots. |
 | `items/item_use.py` | Provides item action labels and applies implemented item-use behavior. |
@@ -127,17 +128,31 @@ icons, quantities, details, and player gold. For an item with an action, the
 footer shows `[E]` and its action label; pressing `E` uses the selected item.
 Empty slots and items without an action ignore `E`.
 
-To add an item action, update both `get_item_action()` and `use_item()` in
-`items/item_use.py`. The first returns the UI label or `None`; the second
-performs the action on the character's selected inventory slot and returns
-feedback intended to follow `You ` in the panel. The caller must check for an
-action first and not change the slot between that check and the call.
-`use_item()` raises for an empty slot or unsupported item.
+`Item.action_words` is important gameplay metadata. It is either `None` or a
+two-word tuple in present-tense/past-tense order, such as `("eat", "ate")`.
+Use the named tuples in `items/action_words.py` when authoring catalog items.
 
-Currently, eating an apple removes one from the selected slot and displays a
-message. Health and the apple's actual health effect are not implemented yet.
-Interacting with an apple tree adds one apple when inventory space is available;
-the tree currently has an unlimited supply.
+Call `item_has_action()` when code only needs to know whether an item currently
+offers an action. Today it uses `action_words`, but callers should rely on the
+helper so that rule can change later without updating every call site.
+
+Non-`None` action words make the inventory panel offer an E action. Every item
+that advertises an action must have matching `use_item()` behavior in
+`items/item_use.py`; otherwise the player would be offered an action that is
+not implemented. `use_item()` operates on the character's selected inventory
+slot and returns feedback intended to follow `You ` in the panel. The caller
+must check for an action first and not change the slot between that check and
+the call. `use_item()` raises for an empty slot or unsupported item.
+
+Currently, eating an apple restores up to five health and removes one apple
+from the selected slot only when healing occurs. A character already at full
+health keeps the apple and receives feedback instead. Interacting with an
+apple tree adds one apple when inventory space is available; the tree currently
+has an unlimited supply.
+
+The normal gameplay HUD displays current/max health and player gold. It is
+rendered separately from the inventory panel so the player can see current
+health while exploring.
 
 ## Current shop limits
 

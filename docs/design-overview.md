@@ -739,7 +739,8 @@ The current source packages are:
   NPC types, dialogue content, and NPCs
 - `world/` for loaded map state, regions/effects, world objects, and
   map-aware movement validation
-- `rendering/` for camera positioning, map drawing, and debug overlays
+- `rendering/` for camera positioning, map drawing, always-visible status,
+  and debug overlays
 - `ui/` for player-interface elements such as notifications and dialogue
 
 `main.py` remains at the project root as the entry point and game-loop
@@ -805,10 +806,10 @@ movement / maps / camera
 -> linear NPC dialogue panel with wrapping/pagination and generic NPCType dialogue fallback
 -> per-animation-state sprite sources when a moving Epic RPG character needs them
 -> vendor shop and player inventory panels
--> character health and apple health effect
+-> initial character health, Apple healing, and gameplay HUD
 -> dialogue choices and expanded vendor interaction flow
 -> stateful world objects and pickups when an interaction needs runtime state
--> health / damage
+-> damage sources, death handling, and combat
 -> contextual traversal and blocking
 -> combat / enemies
 -> quests / story state
@@ -829,6 +830,9 @@ Important roadmap notes:
 -   Map-authored NPCs now support interaction and linear dialogue with
     wrapping and pagination. Exact NPC dialogue overrides fall back to default
     dialogue by `NPCType`.
+-   Characters now own current and maximum health. The gameplay HUD displays
+    health and gold, and Apples restore health without being consumed when the
+    character is already at full health.
 -   A fade-to-black / fade-in map transition effect is planned, but is
     not urgent.
 -   Y/depth-aware rendering for large props such as trees is a known
