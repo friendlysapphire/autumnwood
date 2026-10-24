@@ -1,3 +1,5 @@
+import items.action_words
+
 from items.item import Item
 from items.item_icon_paths import ICON_PATHS_BY_ITEM_ID
 from items.item_id import ItemId
@@ -8,13 +10,20 @@ from items.item_id import ItemId
 # Values are a first pass and can be rebalanced as real shop gameplay takes shape.
 # Require a description for every authored catalog entry so shop items cannot
 # silently fall back to blank player-facing text.
-def _item(item_id: ItemId, display_name: str, default_gold_value: int, description: str) -> Item:
+def _item(item_id: ItemId,
+          display_name: str,
+          default_gold_value: int,
+          description: str,
+          action_words: tuple[str,str] | None = None
+          ) -> Item:
+
     return Item(
         id=item_id,
         display_name=display_name,
         icon_path=ICON_PATHS_BY_ITEM_ID[item_id],
         default_gold_value=default_gold_value,
         description=description,
+        action_words=action_words
     )
 
 
@@ -43,7 +52,7 @@ POTION_22 = _item(ItemId.POTION_22, "Potion", 30, "A larger bottle of unknown li
 MANA_POTION_23 = _item(ItemId.MANA_POTION_23, "Mana Potion", 35, "A powerful blue restorative potion.")
 MUSHROOM = _item(ItemId.MUSHROOM, "Mushroom", 3, "An edible mushroom from the wild.")
 MEAT = _item(ItemId.MEAT, "Meat", 8, "A portion of fresh meat.")
-APPLE = _item(ItemId.APPLE, "Apple", 2, "A crisp apple for a quick snack.")
+APPLE = _item(ItemId.APPLE, "Apple", 2, "A crisp apple for a quick snack.", action_words=items.action_words.EAT_WORDS)
 SKULL = _item(ItemId.SKULL, "Skull", 10, "A weathered skull of unknown origin.")
 BAG_28 = _item(ItemId.BAG_28, "Small Bag", 12, "A small bag for carrying supplies.")
 BAG_29 = _item(ItemId.BAG_29, "Large Bag", 20, "A large bag for carrying supplies.")

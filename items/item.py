@@ -22,6 +22,9 @@ class Item:
 
     description: str = ""
 
+    # present tense, past tense eg ("eat", "ate")
+    action_words: tuple[str, str] | None = None
+
     # can't set this using post_init because it'll load (in item_catalog.py) before pygame is set up and fail
     @cached_property
     def icon_surface(self) -> pygame.Surface:

@@ -5,6 +5,7 @@ from characters.character import Character
 def draw_player_status(player: Character, screen: pygame.Surface, font: pygame.font.Font) -> None:
 
     # Keep the always-visible status text readable over terrain of any color.
+    # This fixed size fits the current two-line health/gold HUD.
     status_background = pygame.Surface((190, 52), pygame.SRCALPHA)
     status_background.fill((0, 0, 0, 145))
     screen.blit(status_background, (7, 7))

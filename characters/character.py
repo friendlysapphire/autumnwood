@@ -197,7 +197,6 @@ class Character:
             anim_rects = self.scaffold.sprite_animation_rects[self._current_animation_state]
             self.sprite = self._sprite_sheet.subsurface(anim_rects[self._current_frame_index])
 
-
     @property
     def current_health(self) -> int:
         return self._current_health
@@ -209,6 +208,8 @@ class Character:
         self._current_health = min(self.max_health, self._current_health + amount)
         return self._current_health - pre_adjust_health
 
+    # Apply a raw damage amount, clamp it at zero, and report the actual
+    # damage taken. Character-specific damage modifiers will belong here.
     def take_damage(self, amount: int) -> int:
         pre_adjust_health = self._current_health
         self._current_health = max(0, self._current_health - amount)
