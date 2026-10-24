@@ -21,9 +21,12 @@ class Character:
         display_name: str,
         scaffold: CharacterScaffold,
         inventory: Inventory | None = None,
-        starting_gold: int | None = 20
+        starting_gold: int = 20,
+        max_health: int = 100
     ):
 
+        self.max_health = max_health
+        self._current_health = self.max_health
         self.name = name
         self.is_alive = True
         self.scaffold = scaffold
@@ -193,6 +196,27 @@ class Character:
             # Replace the visible sprite with the newly selected animation frame.
             anim_rects = self.scaffold.sprite_animation_rects[self._current_animation_state]
             self.sprite = self._sprite_sheet.subsurface(anim_rects[self._current_frame_index])
+
+
+    @property
+    def current_health(self) -> int:
+        return self._current_health
+
+    # Apply a raw healing amount, clamp it at max_health, and report the actual
+    # health restored. Character-specific healing modifiers will belong here.
+    def restore_health(self, amount: int) -> int:
+        pre_adjust_health = self._current_health
+        self._current_health = min(self.max_health, self._current_health + amount)
+        return self._current_health - pre_adjust_health
+
+    def take_damage(self, amount: int) -> int:
+        pre_adjust_health = self._current_health
+        self._current_health = max(0, self._current_health - amount)
+        return pre_adjust_health - self._current_health
+
+    # Item-use code checks this before consuming a healing item with no effect.
+    def is_at_full_health(self) -> bool:
+        return self._current_health == self.max_health
 
     def __repr__(self) -> str:
         r = f"internal name= {self.name}, display name= {self.display_name}, world xy = {self.world_x},{self.world_y}"

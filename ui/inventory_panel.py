@@ -1,6 +1,5 @@
 import textwrap
 
-from enum import StrEnum
 from pathlib import Path
 
 import pygame
@@ -10,7 +9,7 @@ from characters.npcs import NPC
 
 from items.item_bundle import ItemBundle
 from items.inventory import SlotContent
-from items.item_use import get_item_action, use_item
+from items.item_use import get_item_action_words, use_item
 
 
 # TODO: lot of hard coded values in here that will need updates if we ever change the window size or
@@ -121,7 +120,7 @@ class PlayerInventoryPanel:
                                 # Use the same action lookup as the footer so E does nothing for an empty
                                 # slot or an item with no available action.
                                 bundle = self.player.inventory.get_bundle(self.selected_slot)
-                                if bundle is not None and get_item_action(bundle.item) is not None:
+                                if bundle is not None and get_item_action_words(bundle.item) is not None:
                                     self.temporary_message = "You "
                                     self.temporary_message += use_item(self.player,self.selected_slot)
                                     
@@ -202,8 +201,8 @@ class PlayerInventoryPanel:
                     self.panel_base_surface.blit(desc, (282, 210 + (index * line_height)))
 
                 # if item is usable, show the [E] <appopriate verb> text
-                if (action := get_item_action(bundle.item)) is not None:
-                    footer = f"[E] {action}"
+                if (action := get_item_action_words(bundle.item)) is not None:
+                    footer = f"[E] {action[0][0].upper() + action[0][1:]}"
                     footer_fmt = self.header_font.render(footer, True, "grey87")
                     self.panel_base_surface.blit(footer_fmt, (344, 470))
         

@@ -16,6 +16,7 @@ from ui.post_dialogue_menu import PostDialogueMenuType
 from ui.shop import ShopPanel
 from rendering.camera import get_clamped_camera_position
 from rendering.debug_rendering import draw_debug_overlays
+from rendering.hud import draw_player_status
 from rendering.map_render import draw_map
 from world.game_map import GameMap
 from world.movement import update_character_position
@@ -213,6 +214,8 @@ def main() -> None:
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     pygame.display.set_caption("Autumnwood map test")
     clock = pygame.time.Clock()
+
+    hud_health_gold_font = pygame.font.Font(None, 22)
 
     # The panel owns active-notification lifecycle state and its presentation.
     notification_panel = NotificationPanel(screen=screen,
@@ -441,6 +444,9 @@ def main() -> None:
 
         # Advance notification lifecycle and draw the panel above the completed world scene.
         notification_panel.update_and_draw(delta_secs=delta_secs)
+
+        # draw player health/gold stats
+        draw_player_status(player, screen, hud_health_gold_font)
 
         # Draw optional region and collision debug overlays on top of the completed scene.
         if show_map_debug_features:
