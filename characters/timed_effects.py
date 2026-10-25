@@ -26,8 +26,9 @@ class TimedCharacterEffect(ABC):
     
     residual_secs_base: float = 0.0
 
-    # Effects supplied by regions are refreshed every frame. Persistent effects can opt out
-    # and remain tracked until a future system explicitly removes them.
+    # Effects supplied by regions are refreshed every frame. Persistent effects can opt out,
+    # but must have a caller-held key and a future explicit processor end/remove API. Do not
+    # create requires_refresh=False effects until that lifecycle support exists.
     requires_refresh: bool = True
 
     # Runtime counters belong to this persistent effect instance, not to the fresh effect
