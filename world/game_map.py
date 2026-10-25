@@ -10,11 +10,9 @@ from characters.npcs import NPC
 from characters.npc_interactions import NPC_INTERACTIONS_BY_NAME, DEFAULT_NPC_INTERACTIONS_BY_TYPE
 from characters import npc_inventories
 from characters.npc_type import NPCType
-from world.region import MapTransitionRegion, QuicksandRegion, Region, RegionType
+from world.region import MapTransitionRegion, QuicksandRegion, PoisonCloudRegion, Region, RegionType
 from world.world_object import AppleTree, WorldObject, WorldObjectType
 
-
-QUICKSAND_PERCENT_CHANGE = -0.50
 
 # GameMap turns Tiled's authored map metadata into runtime map objects and answers
 # spatial questions about them. It does not apply the gameplay effects those objects imply.
@@ -224,8 +222,10 @@ class GameMap:
                                                                 destination_map=r_dest_map,
                                                                 destination_spawn=r_dest_spawn)) 
                         elif r_type == RegionType.QUICKSAND:
-                            region_list.append(QuicksandRegion(rect=region_rect,
-                                                            percent_change=QUICKSAND_PERCENT_CHANGE))  
+                            region_list.append(QuicksandRegion(rect=region_rect)) 
+                        elif r_type == RegionType.POISON_CLOUD:
+                            region_list.append(PoisonCloudRegion(rect=region_rect))
+
                         # Region types that need no additional runtime data can use the base Region class.
                         elif r_type:
                             region_list.append(Region(rect=region_rect, type=RegionType(r_type)))

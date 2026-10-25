@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from world.region import MapTransitionRegion, QuicksandRegion, Region
+from world.region import MapTransitionRegion, QuicksandRegion, Region, PoisonCloudRegion
 
 # Shared base type lets ActiveRegionEffects group different effect descriptions together.
 @dataclass
@@ -22,6 +22,10 @@ class ActiveRegionEffects:
 @dataclass(kw_only=True)
 class SpeedRegionEffect(RegionEffect):
     percent_change: float
+
+@dataclass(kw_only=True)
+class AbsoluteDamageRegionEffect(RegionEffect):
+    damage_amount: float
 
 ### POST-MOVE EFFECTS
 
@@ -47,6 +51,10 @@ def get_active_region_effects(intersecting_regions: Sequence[Region]) -> ActiveR
 
         elif isinstance(region,QuicksandRegion):
             effect = SpeedRegionEffect(percent_change=region.percent_change)
+            region_effects.pre_move_effects.append(effect)
+
+        elif isinstance(region,PoisonCloudRegion):
+            effect = AbsoluteDamageRegionEffect(damage_amount=region.damage_amount)
             region_effects.pre_move_effects.append(effect)
 
     return region_effects

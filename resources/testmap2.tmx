@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="60" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="8" nextobjectid="98">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="60" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="8" nextobjectid="99">
  <tileset firstgid="1" source="TileSnow.tsx"/>
  <tileset firstgid="133" source="TileCliff.tsx"/>
  <tileset firstgid="245" source="TreeAndStoneSprites.tsx"/>
@@ -126,7 +126,6 @@
   <object id="33" x="740" y="348" width="21.3333" height="45.3333"/>
   <object id="34" x="648" y="93.3333" width="17.3333" height="42.6667"/>
   <object id="35" x="192" y="474.667" width="22.6667" height="45.3333"/>
-  <object id="36" x="480" y="290.667" width="30.6667" height="36"/>
   <object id="38" x="444" y="1092" width="5.33333" height="36"/>
   <object id="39" x="348" y="1093.33" width="13.3333" height="42.6667"/>
   <object id="40" x="252" y="1126.67" width="13.3333" height="41.3333"/>
@@ -215,6 +214,11 @@
     <property name="destination_map" value="special_forest"/>
     <property name="destination_spawn" value="entrance"/>
     <property name="region_type" value="map_transition"/>
+   </properties>
+  </object>
+  <object id="98" x="460" y="265.333" width="77.3333" height="89.3333">
+   <properties>
+    <property name="region_type" value="poison_cloud"/>
    </properties>
   </object>
  </objectgroup>

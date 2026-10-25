@@ -11,6 +11,7 @@ class RegionType(StrEnum):
     NAVIGABLE_SHALLOW_WATER = "nav_shallow_water"
     MAP_TRANSITION = "map_transition"
     QUICKSAND = "quicksand"
+    POISON_CLOUD = "poison_cloud"
 
 # A Region is the runtime version of an authored rectangular gameplay area. Subclasses
 # exist only when a region needs additional runtime data beyond its rectangle and type.
@@ -23,10 +24,19 @@ class Region:
     # ignoring temporary abilities, equipment, vehicles, keys, or other overrides
     def is_walkable_by_default(self) -> bool:
         match self.type:
+            
             case RegionType.SOLID | RegionType.NAVIGABLE_DEEP_WATER:
                 return False
-            case RegionType.NAVIGABLE_SHALLOW_WATER | RegionType.MAP_TRANSITION | RegionType.QUICKSAND:
+            
+            case (
+                RegionType.NAVIGABLE_SHALLOW_WATER
+                | RegionType.MAP_TRANSITION
+                | RegionType.QUICKSAND
+                | RegionType.POISON_CLOUD
+                ):
+                
                 return True
+            
             case _:
                 raise ValueError(f"Region type {self.type} needs defined walkable_by_default behavior.")
 
@@ -42,5 +52,14 @@ class MapTransitionRegion(Region):
 # A quicksand region slows the player by a percentage of their speed
 @dataclass(kw_only=True)
 class QuicksandRegion(Region):
-    percent_change: float
+    percent_change: float = -0.5
     type: RegionType = field(init=False, default=RegionType.QUICKSAND)
+
+# A poison cloud region decreases a player's health by damage_amount every interval_secs until
+# player is out of the region, with residual damage occuring for residual_secs after leaving
+@dataclass(kw_only=True)
+class PoisonCloudRegion(Region):
+    damage_amount: int = 10
+    damage_interval_secs: float = 1.0
+    residual_secs: float = 0.0
+    type: RegionType = field(init=False, default=RegionType.POISON_CLOUD)

@@ -20,7 +20,8 @@ from rendering.hud import draw_player_status
 from rendering.map_render import draw_map
 from world.game_map import GameMap
 from world.movement import update_character_position
-from world.region_effects import  MapTransitionRegionEffect, SpeedRegionEffect, get_active_region_effects
+from world.region_effects import  SpeedRegionEffect, get_active_region_effects
+from world.region_effects import  AbsoluteDamageRegionEffect, MapTransitionRegionEffect
 from world.world_object import AppleTree, WorldObject
 
 
@@ -358,8 +359,17 @@ def main() -> None:
 
         # Extract the speed modifiers currently needed by movement. Other pre-move effect
         # types can be processed here when a gameplay feature introduces them.
+        
+        # apply region damage modifiers
+        region_damage_modifiers_absolute = [effect
+                                            for effect
+                                            in region_effects.pre_move_effects
+                                            if isinstance(effect, AbsoluteDamageRegionEffect)]
 
-        #pre_move_effects = []
+        for effect in region_damage_modifiers_absolute:
+            player.take_damage(effect.damage_amount)
+
+        # apply pre-move speed modifiers
         speed_modifiers = [effect
                         for effect
                         in region_effects.pre_move_effects
