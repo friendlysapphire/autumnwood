@@ -1,9 +1,12 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+from characters.character import Character
+from characters.timed_effects import TimedCharacterEffect, TimedDamageEffectAbs
 from world.region import MapTransitionRegion, QuicksandRegion, Region, PoisonCloudRegion
 
-# Shared base type lets ActiveRegionEffects group different effect descriptions together.
+# Shared base type for immediate region actions used before or after movement. Timed
+# character effects are kept separately because they use their own cross-frame lifecycle.
 @dataclass
 class RegionEffect:
     pass
@@ -14,7 +17,9 @@ class RegionEffect:
 class ActiveRegionEffects:
     pre_move_effects: list[RegionEffect] = field(default_factory=list)
     post_move_effects: list[RegionEffect] = field(default_factory=list)
-
+    # Generic timed effects currently supplied by intersecting regions. The timed-effect
+    # processor retains matching effects and their timer state across frames.
+    timed_character_effects: list[TimedCharacterEffect] = field(default_factory=list)
 
 ### PRE-MOVE EFFECTS
 
@@ -22,10 +27,6 @@ class ActiveRegionEffects:
 @dataclass(kw_only=True)
 class SpeedRegionEffect(RegionEffect):
     percent_change: float
-
-@dataclass(kw_only=True)
-class AbsoluteDamageRegionEffect(RegionEffect):
-    damage_amount: float
 
 ### POST-MOVE EFFECTS
 
@@ -35,9 +36,11 @@ class MapTransitionRegionEffect(RegionEffect):
     destination_map: str
     destination_spawn: str
 
-# Translate already-intersecting regions into effect descriptions. This function neither
-# finds intersections nor applies effects, keeping it independent of GameMap and Character.
-def get_active_region_effects(intersecting_regions: Sequence[Region]) -> ActiveRegionEffects:
+# GameMap turns Tiled-authored rectangles into Region subclasses; this function turns the
+# currently intersecting runtime regions into their current gameplay-effect descriptions.
+# It neither finds intersections nor applies effects. character binds timed effects to the
+# target they will eventually update.
+def get_active_region_effects(character: Character, intersecting_regions: Sequence[Region]) -> ActiveRegionEffects:
 
     region_effects = ActiveRegionEffects()
 
@@ -54,7 +57,15 @@ def get_active_region_effects(intersecting_regions: Sequence[Region]) -> ActiveR
             region_effects.pre_move_effects.append(effect)
 
         elif isinstance(region,PoisonCloudRegion):
-            effect = AbsoluteDamageRegionEffect(damage_amount=region.damage_amount)
-            region_effects.pre_move_effects.append(effect)
+            # Region discovery creates a fresh description each frame. The timed-effect processor
+            # recognizes this key and retains the persistent effect instance that owns its timers.
+            effect = TimedDamageEffectAbs(character=character,
+                                          effect_key="poison cloud",
+                                          damage_per_interval=region.damage_amount,
+                                          tick_interval_secs=region.damage_interval_secs,
+                                          residual_secs_base=region.residual_secs
+                                          )
+
+            region_effects.timed_character_effects.append(effect)
 
     return region_effects

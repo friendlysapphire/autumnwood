@@ -8,6 +8,7 @@ from characters.character import Character
 from characters.character_scaffolds import ELF_MAGE
 from characters import initial_player_inventory
 from characters.npcs import NPC
+from characters.timed_effects import TimedCharacterEffectProcessor
 from items import item_catalog
 from ui.notifications import GameNotification, GameNotificationDismissPolicy, NotificationPanel
 from ui.dialogue import DialoguePanel
@@ -21,7 +22,7 @@ from rendering.map_render import draw_map
 from world.game_map import GameMap
 from world.movement import update_character_position
 from world.region_effects import  SpeedRegionEffect, get_active_region_effects
-from world.region_effects import  AbsoluteDamageRegionEffect, MapTransitionRegionEffect
+from world.region_effects import  MapTransitionRegionEffect
 from world.world_object import AppleTree, WorldObject
 
 
@@ -241,7 +242,10 @@ def main() -> None:
                            window_width=WINDOW_WIDTH,
                            alpha=DIALOGUE_PANEL_ALPHA)
 
-    
+    # Persist this processor across frames so timed effects retain counters even though
+    # region discovery creates fresh effect descriptions each frame.
+    timed_char_effect_processor = TimedCharacterEffectProcessor()
+
     # Load the initial map, which owns its runtime regions, world objects, and dimensions.
     current_map = GameMap(BASE_MAP_PATH)
 
@@ -355,19 +359,10 @@ def main() -> None:
         # Discover effects from the position occupied before movement. These effects can
         # modify the upcoming move, such as quicksand changing the effective speed.
         intersecting_regions = current_map.get_regions_intersecting_character(character=player)
-        region_effects = get_active_region_effects(intersecting_regions=intersecting_regions)
+        region_effects = get_active_region_effects(character=player, intersecting_regions=intersecting_regions)
 
         # Extract the speed modifiers currently needed by movement. Other pre-move effect
         # types can be processed here when a gameplay feature introduces them.
-        
-        # apply region damage modifiers
-        region_damage_modifiers_absolute = [effect
-                                            for effect
-                                            in region_effects.pre_move_effects
-                                            if isinstance(effect, AbsoluteDamageRegionEffect)]
-
-        for effect in region_damage_modifiers_absolute:
-            player.take_damage(effect.damage_amount)
 
         # apply pre-move speed modifiers
         speed_modifiers = [effect
@@ -388,9 +383,16 @@ def main() -> None:
         )
 
         # Rediscover effects from the resolved position. Post-move effects, such as map
-        # transitions, must use this position rather than the one from before movement.
+        # transitions, and timed-effect sources must use this position rather than the one
+        # from before movement.
         intersecting_regions = current_map.get_regions_intersecting_character(character=player)
-        region_effects = get_active_region_effects(intersecting_regions=intersecting_regions)
+        region_effects = get_active_region_effects(character=player, intersecting_regions=intersecting_regions)
+
+        # Each effect source may refresh its currently supplied effects one or more times during
+        # this main-loop frame. After all sources report, process() advances the tracked effects
+        # exactly once using this frame's elapsed time.
+        timed_char_effect_processor.refresh_effects(region_effects.timed_character_effects)
+        timed_char_effect_processor.process(delta_secs)
 
         # Process effects triggered by the player's position after movement resolves.
         for effect in region_effects.post_move_effects:
