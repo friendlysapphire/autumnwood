@@ -6,8 +6,9 @@ The current design separates several ideas:
 
 - **GameMap**: owns the currently loaded Tiled map and the runtime map data derived from it, including regions and world objects.
 - **Region**: an area on the map with gameplay meaning.
-- **RegionEffect**: one effect implied by occupying a region.
-- **ActiveRegionEffects**: groups effects implied by one set of intersecting regions into pre-move and post-move buckets.
+- **RegionEffect**: an immediate effect implied by occupying a region, such as a speed modifier or map transition.
+- **TimedCharacterEffect**: a character effect that persists across frames and owns its own timing state.
+- **ActiveRegionEffects**: groups effects implied by one set of intersecting regions into pre-move, post-move, and timed-effect buckets.
 - **Game loop processing**: coordinates intersection queries, effect discovery, and application of those effects.
 
 Ordinary impassable scenery stays on Tiled's **Collisions** layer and requires no custom metadata. Special gameplay areas go on the **Regions** layer.
@@ -23,6 +24,7 @@ For a normal gameplay region:
 Examples:
 
 - Quicksand: `region_type = quicksand`
+- Poison cloud: `region_type = poison_cloud`
 - Map transition:
   - `region_type = map_transition`
   - `destination_map = special_forest`
@@ -59,6 +61,7 @@ Examples:
 
 - `MapTransitionRegion`: `destination_map`, `destination_spawn`
 - `QuicksandRegion`: `percent_change`
+- `PoisonCloudRegion`: `damage_amount`, `damage_interval_secs`, `residual_secs`
 
 When a subclass always represents one `RegionType`, fix its type automatically:
 
@@ -80,6 +83,7 @@ Examples:
 
 - `MapTransitionRegion` needs `destination_map` and `destination_spawn`.
 - `QuicksandRegion` carries its `percent_change`.
+- `PoisonCloudRegion` carries its damage and timing configuration.
 - A simple navigable-water region can remain a plain `Region` because its `RegionType` is enough to describe it.
 
 ## 4. Teach `GameMap` how to load it
@@ -91,9 +95,10 @@ Its internal map-loading code currently creates both:
 - regions
 - world objects
 
-The current quicksand percentage is a Python-defined shared value rather
-than per-region Tiled metadata. A Tiled quicksand object therefore needs
-only `region_type = quicksand` today.
+The current quicksand percentage and poison-cloud damage/timing values are
+Python-defined defaults rather than per-region Tiled metadata. Tiled
+quicksand and poison-cloud objects therefore need only their respective
+`region_type` values today.
 
 For a new region type:
 
@@ -149,7 +154,8 @@ This separation prevents the region-effect module from needing to know about `Ga
 
 ## 6. Decide whether the region produces an effect
 
-Not every region needs a `RegionEffect`.
+Not every region needs a gameplay effect. When it does, first decide whether
+the result is immediate or must continue over time.
 
 Examples:
 
@@ -157,22 +163,24 @@ Examples:
 - Navigable water may initially need no effect.
 - Quicksand produces a speed effect.
 - A map-transition region produces a transition effect.
+- A poison cloud produces timed damage while the player remains affected.
 
-If the region produces a new kind of effect, add a small dataclass in
-`world/region_effects.py`.
+Use an immediate `RegionEffect` for something the current frame needs to
+process before or after movement. Use a `TimedCharacterEffect` for something
+that must retain a timer, potentially continue after the region is left, or
+otherwise persist across frames.
 
 Existing examples:
 
 - `SpeedRegionEffect`
 - `MapTransitionRegionEffect`
 
-Each effect dataclass should contain only the data needed to apply that effect.
+Each effect description should contain only the data needed for its own
+processing path.
 
-All concrete region-effect classes inherit from the common `RegionEffect` base class.
+## 7. Put the effect in the right processing path
 
-## 7. Make the new effect a `RegionEffect`
-
-All region effects inherit from the common `RegionEffect` base class.
+Immediate region effects inherit from the common `RegionEffect` base class.
 
 Example:
 
@@ -182,14 +190,19 @@ class NewRegionEffect(RegionEffect):
     ...
 ```
 
-`ActiveRegionEffects` collects effects into two mutable lists:
+`ActiveRegionEffects` collects immediate effects into two mutable lists:
 
 - `pre_move_effects`
 - `post_move_effects`
 
-These use `field(default_factory=list)`.
+It also has `timed_character_effects`, which contains fresh timed-effect
+descriptions for the currently intersected regions. All three lists use
+`field(default_factory=list)`.
 
-Add the effect to the appropriate list when `get_active_region_effects()` discovers the corresponding region.
+Add an immediate effect to the appropriate pre- or post-move list when
+`get_active_region_effects()` discovers the corresponding region. Add a
+timed effect to `timed_character_effects`; the timed-effect processor, not
+the region function, owns the persistent timer instance.
 
 ## 8. Update `get_active_region_effects()`
 
@@ -197,7 +210,7 @@ Add the effect to the appropriate list when `get_active_region_effects()` discov
 
 Its responsibility is:
 
-1. Receive a sequence of intersecting `Region` objects.
+1. Receive the affected `Character` and a sequence of intersecting `Region` objects.
 2. Determine what effects those regions imply.
 3. Return an `ActiveRegionEffects` object.
 4. **Not** apply those effects itself.
@@ -206,11 +219,14 @@ Its input therefore looks conceptually like:
 
 ```python
 def get_active_region_effects(
+    character: Character,
     intersecting_regions: Sequence[Region],
 ) -> ActiveRegionEffects:
 ```
 
-The function does not need the `Character` or `GameMap`. Those responsibilities belong elsewhere.
+The function does not need `GameMap`; the caller has already asked the map
+which regions intersect the character. It receives the `Character` only when
+a newly described timed effect must be associated with that character.
 
 The game loop first asks the current map for intersecting regions:
 
@@ -221,7 +237,7 @@ current_map.get_regions_intersecting_character(player)
 and then passes those regions into:
 
 ```text
-get_active_region_effects(intersecting_regions)
+get_active_region_effects(character=player, intersecting_regions=...)
 ```
 
 Use `isinstance()` when effect creation depends on data that exists only on a region subclass.
@@ -231,6 +247,7 @@ Examples:
 ```python
 isinstance(region, MapTransitionRegion)
 isinstance(region, QuicksandRegion)
+isinstance(region, PoisonCloudRegion)
 ```
 
 Then create the appropriate effect and append it to the correct bucket.
@@ -242,7 +259,10 @@ Region
 = what exists on the map
 
 RegionEffect
-= what occupying that region currently implies
+= an immediate result of occupying that region
+
+TimedCharacterEffect
+= an ongoing character consequence of occupying that region
 ```
 
 ### Pre-move effects
@@ -256,6 +276,16 @@ Example: quicksand speed reduction.
 Use for effects that react to the player's position after movement resolves.
 
 Example: map transition.
+
+### Timed effects
+
+Use for effects that need to remember elapsed time across frames. A poison
+cloud creates a fresh `TimedDamageEffectAbs` description while the player is
+inside it. The processor recognizes its key, preserves the already-tracked
+effect and its timer, and applies damage at the configured interval.
+
+The processor can also keep the effect in its residual phase after the player
+leaves when the region supplies a nonzero residual duration.
 
 The current model intentionally does not track explicit enter/exit events yet. Add that only when a real gameplay feature needs it.
 
@@ -271,9 +301,11 @@ The frame currently follows this pattern:
 5. Resolve player movement.
 6. Ask GameMap which regions intersect the player at the new position.
 7. Convert those regions into ActiveRegionEffects.
-8. Process post-move effects.
-9. Calculate camera and animation state.
-10. Draw the frame.
+8. Refresh timed effects from the discovered regions.
+9. Process timed effects once after every source has reported for this frame.
+10. Process post-move effects.
+11. Calculate camera and animation state.
+12. Draw the frame.
 ```
 
 The important separation is:
@@ -294,7 +326,12 @@ Character / other subsystems
 
 Before movement, the game loop gets the currently intersecting regions and derives `pre_move_effects`.
 
-After movement, it performs the intersection query again because the player's position may have changed, then derives and processes `post_move_effects`.
+After movement, it performs the intersection query again because the player's
+position may have changed. It derives fresh timed-effect descriptions and
+calls `refresh_effects()` before calling `process(delta_secs)` exactly once
+for the frame. `refresh_effects()` may be called more than once when multiple
+systems report timed effects; `process()` belongs after all of those reports.
+It then processes `post_move_effects`.
 
 Use `isinstance()` to narrow a general `RegionEffect` to the specific effect dataclass before accessing effect-specific fields.
 
@@ -422,7 +459,7 @@ Tiled region
 -> Region or Region subclass
 -> GameMap intersection query
 -> get_active_region_effects() if applicable
--> ActiveRegionEffects pre/post bucket
+-> ActiveRegionEffects immediate or timed-effect bucket
 -> game-loop processing
 -> subsystem-specific input if applicable
 -> visible gameplay result
@@ -470,6 +507,17 @@ For temporary effects such as quicksand, specifically verify that leaving the re
 - Processing: pre-move
 - Speed handling: contributes a `SpeedModifier` to the current movement calculation without changing the player's stored speed
 
+### `POISON_CLOUD`
+
+- Authored on: **Regions** layer
+- Property: `region_type = poison_cloud`
+- Runtime: `PoisonCloudRegion`
+- Owned by: `GameMap`
+- Default walkability: true
+- Effect: `TimedDamageEffectAbs`
+- Processing: refreshed from the currently intersected regions, then processed once per frame by `TimedCharacterEffectProcessor`
+- Timing: the runtime region currently supplies Python-defined default damage, interval, and residual-duration values
+
 ## Quick checklist
 
 When adding a region, check:
@@ -479,11 +527,11 @@ When adding a region, check:
 - `Region.is_walkable_by_default()`
 - optional new `Region` subclass in `world/region.py`
 - `GameMap` loading logic in `world/game_map.py`
-- optional new effect dataclass in `world/region_effects.py`
-- new effect subclass of `RegionEffect`, if needed
+- immediate effect dataclass in `world/region_effects.py`, if needed
+- `TimedCharacterEffect` subclass in `characters/timed_effects.py`, if the effect persists across frames
 - `get_active_region_effects()` in `world/region_effects.py`
 - `GameMap.get_regions_intersecting_character()`
-- pre-move or post-move processing in the main loop
+- pre-move, post-move, or timed-effect processing in the main loop
 - `SpeedModifier` compatibility if the effect changes movement speed
 - debug-overlay color
 - gameplay test

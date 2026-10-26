@@ -44,6 +44,10 @@ needed:
 For example, paint an apple tree on `Scenery`, then add an appropriately
 placed rectangle on `World Objects` when it should be interactable.
 
+For a poison cloud, add a rectangle on `Regions` and set the custom string
+property `region_type = poison_cloud`. Its current damage and timing values
+come from Python defaults, so it needs no additional Tiled properties.
+
 ## Add player and transition spawns
 
 Place a point object on `Spawns` and set its built-in Tiled Name. The map

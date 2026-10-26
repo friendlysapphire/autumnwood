@@ -112,7 +112,8 @@ coordinates.
 Rectangular gameplay areas with explicit meaning. Every object on this
 layer requires a `region_type` custom property.
 
-Examples include `map_transition`, `quicksand`, and navigable water.
+Examples include `map_transition`, `quicksand`, `poison_cloud`, and
+navigable water.
 Some region types use the base `Region` class; others use subclasses
 when they need extra runtime data.
 
@@ -223,6 +224,9 @@ Regions / map_transition
 
 Regions / quicksand
 -> QuicksandRegion
+
+Regions / poison_cloud
+-> PoisonCloudRegion
 
 World Objects / apple_tree
 -> AppleTree
@@ -342,6 +346,7 @@ Current region types include:
 -   `NAVIGABLE_SHALLOW_WATER`
 -   `MAP_TRANSITION`
 -   `QUICKSAND`
+-   `POISON_CLOUD`
 
 ### Specialized region subclasses
 
@@ -358,13 +363,20 @@ automatically to `RegionType.MAP_TRANSITION`.
 Adds `percent_change`. Its type is fixed automatically to
 `RegionType.QUICKSAND`.
 
+#### `PoisonCloudRegion`
+
+Adds damage and timing configuration. Its type is fixed automatically to
+`RegionType.POISON_CLOUD`.
+
 A region type that requires no additional runtime data can remain a
 plain `Region`.
 
 ## Region effects
 
-A `Region` describes an area. A `RegionEffect` describes an effect
-produced by occupying that area.
+A `Region` describes an area. An immediate `RegionEffect` describes a result
+the current frame needs to process from occupying that area. A
+`TimedCharacterEffect` describes an ongoing character consequence and owns
+its timer across frames.
 
 Current concrete effects:
 
@@ -375,6 +387,7 @@ Current concrete effects:
 
 -   `pre_move_effects`
 -   `post_move_effects`
+-   `timed_character_effects`
 
 ### `get_active_region_effects()`
 
@@ -392,13 +405,15 @@ Conceptually:
 
 ``` python
 def get_active_region_effects(
+    character: Character,
     intersecting_regions: Sequence[Region],
 ) -> ActiveRegionEffects:
 ```
 
-It deliberately does not receive a `GameMap` or a `Character`. The
-caller first asks the map which regions intersect the character, then
-passes those regions into the effect function.
+It deliberately does not receive a `GameMap`; the caller first asks the map
+which regions intersect the character, then passes those regions and the
+affected character into the effect function. The character is needed only to
+bind a newly described timed effect to its target.
 
 This keeps the dependency boundary clean and prevents `world/game_map.py` and
 `world/region_effects.py` from importing each other.
@@ -413,6 +428,13 @@ a `SpeedRegionEffect`.
 These react to the player's location after movement resolves. Current
 example: map transition produces a `MapTransitionRegionEffect`.
 
+### Timed character effects
+
+These are refreshed from the regions currently affecting the character, then
+processed once per frame by `TimedCharacterEffectProcessor`. A poison cloud
+creates a `TimedDamageEffectAbs`; the processor keeps its timer state rather
+than replacing it with the fresh description made during region discovery.
+
 The game currently does not explicitly model `ON_ENTER` or `ON_EXIT`
 region events. Add that only when a real gameplay feature requires it.
 
@@ -422,9 +444,9 @@ region events. Add that only when a real gameplay feature requires it.
 Tiled region
 -> GameMap loads Region / specialized Region subclass
 -> GameMap determines which regions intersect the player
--> get_active_region_effects(intersecting_regions)
+-> get_active_region_effects(character, intersecting_regions)
 -> ActiveRegionEffects
--> game loop processes pre- or post-move effects
+-> game loop processes immediate and timed effects in their appropriate phases
 ```
 
 ### Quicksand example
@@ -443,6 +465,19 @@ Tiled: region_type = quicksand
 
 Leaving quicksand requires no cleanup because the player's stored speed
 was never changed.
+
+### Poison-cloud example
+
+``` text
+Tiled: region_type = poison_cloud
+-> PoisonCloudRegion(default damage and timing configuration)
+-> GameMap reports that player intersects poison cloud
+-> get_active_region_effects(character, ...)
+-> fresh TimedDamageEffectAbs description in timed_character_effects
+-> TimedCharacterEffectProcessor refreshes its tracked effect by key
+-> tracked effect applies damage on its interval
+-> optional residual duration continues that damage after the player leaves
+```
 
 ### Map transition example
 
@@ -618,14 +653,16 @@ The current frame flow is approximately:
 8. Move the player when the proposed position is valid.
 9. Ask GameMap which regions intersect the new player position.
 10. Translate those regions into active region effects again.
-11. Process post-move effects such as map transitions.
-12. Select the animation state and apply notification dismissal tied to movement attempts.
-13. Calculate camera position.
-14. Draw the map.
-15. Advance and draw the player and any spawned NPCs.
-16. Update and draw the active notification panel.
-17. Draw optional debug overlays.
-18. Flip the completed frame to the display.
+11. Refresh timed effects discovered by every source for this frame.
+12. Process timed effects once after all refreshes, such as poison-cloud damage.
+13. Process post-move effects such as map transitions.
+14. Select the animation state and apply notification dismissal tied to movement attempts.
+15. Calculate camera position.
+16. Draw the map.
+17. Advance and draw the player and any spawned NPCs.
+18. Update and draw the active notification panel.
+19. Draw optional debug overlays.
+20. Flip the completed frame to the display.
 ```
 
 ### Movement validation
@@ -735,8 +772,8 @@ Refactoring is now happening incrementally rather than as a rewrite.
 
 The current source packages are:
 
-- `characters/` for character state, animation definitions, scaffolds,
-  NPC types, dialogue content, and NPCs
+- `characters/` for character state, timed character effects, animation
+  definitions, scaffolds, NPC types, dialogue content, and NPCs
 - `world/` for loaded map state, regions/effects, world objects, and
   map-aware movement validation
 - `rendering/` for camera positioning, map drawing, always-visible status,
@@ -807,6 +844,7 @@ movement / maps / camera
 -> per-animation-state sprite sources when a moving Epic RPG character needs them
 -> vendor shop and player inventory panels
 -> initial character health, Apple healing, and gameplay HUD
+-> poison-cloud timed damage and residual-effect foundation
 -> dialogue choices and expanded vendor interaction flow
 -> stateful world objects and pickups when an interaction needs runtime state
 -> damage sources, death handling, and combat
@@ -833,6 +871,9 @@ Important roadmap notes:
 -   Characters now own current and maximum health. The gameplay HUD displays
     health and gold, and Apples restore health without being consumed when the
     character is already at full health.
+-   Poison clouds now use the generic timed-character-effect processor. The
+    processor distinguishes effects refreshed by an active source from future
+    persistent effects that must be explicitly removed by their returned key.
 -   A fade-to-black / fade-in map transition effect is planned, but is
     not urgent.
 -   Y/depth-aware rendering for large props such as trees is a known
