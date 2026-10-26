@@ -11,6 +11,8 @@ from characters.npcs import NPC
 from items.item_bundle import ItemBundle
 from items.inventory import SlotContent
 
+from rendering.hud import draw_player_status
+
 class ShopPanelSide(StrEnum):
     NPC = "npc"
     PLAYER = "player"
@@ -234,6 +236,9 @@ class ShopPanel:
 
             # Clear the previous 
             self.shop_base_surface.fill((0, 0, 0, self.panel_alpha))
+
+            # sneakily update the hud health/gold status
+            draw_player_status(self.player, self.screen)
 
             # lay down the basic, static structure
             self.shop_base_surface.blit(self.shop_base_img, (0,0))
