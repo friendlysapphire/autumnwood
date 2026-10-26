@@ -217,8 +217,6 @@ def main() -> None:
     pygame.display.set_caption("Autumnwood map test")
     clock = pygame.time.Clock()
 
-    hud_health_gold_font = pygame.font.Font(None, 22)
-
     # The panel owns active-notification lifecycle state and its presentation.
     notification_panel = NotificationPanel(screen=screen,
                                            panel_width=NOTIFICATION_PANEL_WIDTH,
@@ -458,7 +456,7 @@ def main() -> None:
         notification_panel.update_and_draw(delta_secs=delta_secs)
 
         # draw player health/gold stats
-        draw_player_status(player, screen, hud_health_gold_font)
+        draw_player_status(player, screen)
 
         # Draw optional region and collision debug overlays on top of the completed scene.
         if show_map_debug_features:

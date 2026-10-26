@@ -1,9 +1,23 @@
+from functools import cache
+
 import pygame      
 
 from characters.character import Character
 
-def draw_player_status(player: Character, screen: pygame.Surface, font: pygame.font.Font) -> None:
 
+@cache
+def _get_health_gold_font() -> pygame.font.Font:
+    return pygame.font.Font(None, 22)
+
+
+def draw_player_status(player: Character,
+                       screen: pygame.Surface,
+                       font: pygame.font.Font | None = None
+                       ) -> None:
+
+    if font is None:
+        font = _get_health_gold_font()
+    
     # Keep the always-visible status text readable over terrain of any color.
     # This fixed size fits the current two-line health/gold HUD.
     status_background = pygame.Surface((190, 52), pygame.SRCALPHA)

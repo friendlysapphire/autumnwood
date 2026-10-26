@@ -9,7 +9,8 @@ from characters.npcs import NPC
 
 from items.item_bundle import ItemBundle
 from items.inventory import SlotContent
-from items.item_use import get_item_action_words, use_item, item_has_action, ITEM_USE_PRESENT_TENSE
+from items.item_use import use_item, item_has_action, ITEM_USE_PRESENT_TENSE
+from rendering.hud import draw_player_status
 
 
 # TODO: lot of hard coded values in here that will need updates if we ever change the window size or
@@ -149,6 +150,9 @@ class PlayerInventoryPanel:
 
             # Restore the frozen world frame before drawing the inventory panel over it.
             self.screen.blit(background_image)
+
+            # sneakily update the hud health/gold status
+            draw_player_status(self.player, self.screen)
 
             # Clear the previous frame's dynamic panel contents before rebuilding it.
             self.panel_base_surface.fill((0, 0, 0, self.panel_alpha))
