@@ -448,12 +448,15 @@ consequence that occurs when an interval completes. For example,
 | Lifecycle | How it begins | Normal ending path | Optional early ending |
 | --- | --- | --- | --- |
 | Refresh-required | A source, such as a map region, reports the effect each frame through `refresh_effects_requiring_refresh()` | Its source stops reporting it, so it ends immediately or enters its configured residual phase | Not applicable today; the source controls whether it remains active |
-| Non-refresh, manually ended | A caller adds the effect once through `add_non_refresh_effect()` | The creator later removes it with `remove_effect_by_key()` | The creator can remove it at any point with that same key |
-| Non-refresh, automatically timed | A caller adds the effect once with automatic timing enabled and a positive duration | The processor prunes it when its own timer expires | The creator can still remove it early with its returned key |
+| Non-refresh, manually ended | A caller adds the effect once with `no_refresh_req_timer_base = 0` | The creator later removes it with `remove_effect_by_key()` | The creator can remove it at any point with that same key |
+| Non-refresh, automatically timed | A caller adds the effect once with a positive `no_refresh_req_timer_base` | The processor prunes it when its own timer expires | The creator can still remove it early with its returned key |
 
 Residual time is not a fourth lifecycle. It is an optional second phase of a
 refresh-required effect: the source has disappeared, but the effect remains
 active temporarily.
+
+For a non-refresh effect, zero duration means manual removal by key; a positive
+duration means automatic expiry. Negative durations are invalid.
 
 The game currently does not explicitly model `ON_ENTER` or `ON_EXIT`
 region events. Add that only when a real gameplay feature requires it.

@@ -35,9 +35,8 @@ class TimedCharacterEffect(ABC):
     # from their own timer or remain until their creator removes them by key.
     requires_refresh: bool = True
 
-    # Optional lifecycle for a non-refresh effect that should end automatically.
-    # The base duration is configuration; the remaining duration is runtime state.
-    no_refresh_req_is_timed: bool = False
+    # For a non-refresh effect, zero means it remains active until removed by key.
+    # A positive duration makes the processor prune it automatically on expiry.
     no_refresh_req_timer_base: float = 0.0
 
     # Runtime counters belong to this persistent effect instance, not to fresh effect
@@ -56,16 +55,11 @@ class TimedCharacterEffect(ABC):
         # Reject contradictory lifecycle settings instead of allowing an effect whose
         # refresh, residual, and expiration behavior is unclear.
         if (self.requires_refresh is True
-            and (self.no_refresh_req_is_timed is True or self.no_refresh_req_timer_base != 0)):
+            and (self.no_refresh_req_timer_base != 0)):
             raise ValueError(f"Illegal value combination for TimedCharacterEffect (mixing refresh and non refresh): {self}")
         elif (self.requires_refresh is False
-              and self.no_refresh_req_is_timed is True
-              and self.no_refresh_req_timer_base <= 0):
-            raise ValueError(f"Illegal value combination for TimedCharacterEffect (non-refresh, timed with no timer val): {self}")
-        elif (self.requires_refresh is False
-              and self.no_refresh_req_is_timed is False
-              and self.no_refresh_req_timer_base != 0):
-            raise ValueError(f"Illegal value combination for TimedCharacterEffect (non-refresh, untimed with timer val): {self}")
+              and self.no_refresh_req_timer_base < 0):
+            raise ValueError(f"Illegal value combination for TimedCharacterEffect (non-refresh, with negative timer val): {self}")
 
     # A source reappeared before this effect's residual period expired. Resume active ticking
     # with a fresh tick interval and a restored residual-duration budget.
@@ -95,7 +89,7 @@ class TimedCharacterEffect(ABC):
             # Clip the elapsed time so a residual effect cannot count time after it expired.
             time_effect_was_active = min(self.residual_secs_left, time_effect_was_active)
             self.residual_secs_left -= time_effect_was_active
-        elif self.requires_refresh is False and self.no_refresh_req_is_timed:
+        elif self.requires_refresh is False and self.no_refresh_req_timer_base > 0:
             time_effect_was_active = min(self.no_refresh_req_timer_secs_left, time_effect_was_active)
             self.no_refresh_req_timer_secs_left -= time_effect_was_active
 
@@ -145,10 +139,9 @@ class TimedCharacterEffectProcessor:
         self.key_tail += 1
         return out_str
 
-    # Add a non-refresh effect and return its generated key.
-    # The caller retains that key. If no_refresh_req_is_timed is set, effect
-    # will be automatically be pruned at end of timer.
-    # else it is creator's job to call remove_effect_by_key() when the effect should end.
+    # Add a non-refresh effect and return its generated key. A positive timer base
+    # makes the processor prune it automatically; a zero timer base leaves removal
+    # to the caller through remove_effect_by_key().
     def add_non_refresh_effect(self, effect: TimedCharacterEffect) -> str:
         
         if effect.requires_refresh == True:
@@ -226,7 +219,7 @@ class TimedCharacterEffectProcessor:
             if effect.state == RefreshRequiredTimedEffectState.RESIDUAL and effect.residual_secs_left <= 0:
                 prune_key_set.add(effect.effect_key)
             elif (effect.requires_refresh is False and
-                  effect.no_refresh_req_is_timed is True and
+                  effect.no_refresh_req_timer_base > 0  and
                   effect.no_refresh_req_timer_secs_left <= 0):
                 prune_key_set.add(effect.effect_key)
 
