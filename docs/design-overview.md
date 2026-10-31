@@ -430,10 +430,30 @@ example: map transition produces a `MapTransitionRegionEffect`.
 
 ### Timed character effects
 
-These are refreshed from the regions currently affecting the character, then
-processed once per frame by `TimedCharacterEffectProcessor`. A poison cloud
-creates a `TimedDamageEffectAbs`; the processor keeps its timer state rather
-than replacing it with the fresh description made during region discovery.
+Timed effects own their counters across frames and are processed once per
+frame by `TimedCharacterEffectProcessor`. Region-driven effects are refreshed
+from the regions currently affecting the character. A poison cloud creates a
+fresh `TimedDamageEffectAbs` description; the processor keeps its already
+tracked effect and timer rather than replacing it during each region lookup.
+
+`TimedCharacterEffect.update()` owns shared lifecycle and timer handling. Each
+concrete subclass implements `apply_effect()` for the one gameplay-specific
+consequence that occurs when an interval completes. For example,
+`TimedDamageEffectAbs.apply_effect()` calls the character's damage method.
+
+### Timed-effect lifecycles
+
+`TimedCharacterEffect` supports three distinct lifecycle paths:
+
+| Lifecycle | How it begins | Normal ending path | Optional early ending |
+| --- | --- | --- | --- |
+| Refresh-required | A source, such as a map region, reports the effect each frame through `refresh_effects_requiring_refresh()` | Its source stops reporting it, so it ends immediately or enters its configured residual phase | Not applicable today; the source controls whether it remains active |
+| Non-refresh, manually ended | A caller adds the effect once through `add_non_refresh_effect()` | The creator later removes it with `remove_effect_by_key()` | The creator can remove it at any point with that same key |
+| Non-refresh, automatically timed | A caller adds the effect once with automatic timing enabled and a positive duration | The processor prunes it when its own timer expires | The creator can still remove it early with its returned key |
+
+Residual time is not a fourth lifecycle. It is an optional second phase of a
+refresh-required effect: the source has disappeared, but the effect remains
+active temporarily.
 
 The game currently does not explicitly model `ON_ENTER` or `ON_EXIT`
 region events. Add that only when a real gameplay feature requires it.
@@ -653,7 +673,8 @@ The current frame flow is approximately:
 8. Move the player when the proposed position is valid.
 9. Ask GameMap which regions intersect the new player position.
 10. Translate those regions into active region effects again.
-11. Refresh timed effects discovered by every source for this frame.
+11. Call `refresh_effects_requiring_refresh()` for timed effects supplied by
+    every active source this frame.
 12. Process timed effects once after all refreshes, such as poison-cloud damage.
 13. Process post-move effects such as map transitions.
 14. Select the animation state and apply notification dismissal tied to movement attempts.
@@ -871,9 +892,9 @@ Important roadmap notes:
 -   Characters now own current and maximum health. The gameplay HUD displays
     health and gold, and Apples restore health without being consumed when the
     character is already at full health.
--   Poison clouds now use the generic timed-character-effect processor. The
-    processor distinguishes effects refreshed by an active source from future
-    persistent effects that must be explicitly removed by their returned key.
+-   Poison clouds now use the generic timed-character-effect processor. It
+    supports source-refreshed effects, manually removed non-refresh effects,
+    and non-refresh effects that expire on their own timer.
 -   A fade-to-black / fade-in map transition effect is planned, but is
     not urgent.
 -   Y/depth-aware rendering for large props such as trees is a known

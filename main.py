@@ -389,7 +389,7 @@ def main() -> None:
         # Each effect source may refresh its currently supplied effects one or more times during
         # this main-loop frame. After all sources report, process() advances the tracked effects
         # exactly once using this frame's elapsed time.
-        timed_char_effect_processor.refresh_effects(region_effects.timed_character_effects)
+        timed_char_effect_processor.refresh_effects_requiring_refresh(region_effects.timed_character_effects)
         timed_char_effect_processor.process(delta_secs)
 
         # Process effects triggered by the player's position after movement resolves.

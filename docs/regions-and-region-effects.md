@@ -287,6 +287,15 @@ effect and its timer, and applies damage at the configured interval.
 The processor can also keep the effect in its residual phase after the player
 leaves when the region supplies a nonzero residual duration.
 
+Regions use the **refresh-required** timed-effect lifecycle: they describe the
+effect again during every frame in which the character intersects the region.
+The game loop passes those descriptions to
+`refresh_effects_requiring_refresh()`. Effects created by items, spells, or
+other non-region systems may instead be added once as non-refresh effects;
+they either expire on their own timer or are later removed by their returned
+key. See [Timed-effect lifecycles](design-overview.md#timed-effect-lifecycles)
+for the full distinction.
+
 The current model intentionally does not track explicit enter/exit events yet. Add that only when a real gameplay feature needs it.
 
 ## 9. Process region effects in the game loop
@@ -301,7 +310,8 @@ The frame currently follows this pattern:
 5. Resolve player movement.
 6. Ask GameMap which regions intersect the player at the new position.
 7. Convert those regions into ActiveRegionEffects.
-8. Refresh timed effects from the discovered regions.
+8. Call `refresh_effects_requiring_refresh()` for timed effects from the
+   discovered regions.
 9. Process timed effects once after every source has reported for this frame.
 10. Process post-move effects.
 11. Calculate camera and animation state.
@@ -328,9 +338,10 @@ Before movement, the game loop gets the currently intersecting regions and deriv
 
 After movement, it performs the intersection query again because the player's
 position may have changed. It derives fresh timed-effect descriptions and
-calls `refresh_effects()` before calling `process(delta_secs)` exactly once
-for the frame. `refresh_effects()` may be called more than once when multiple
-systems report timed effects; `process()` belongs after all of those reports.
+calls `refresh_effects_requiring_refresh()` before calling `process(delta_secs)`
+exactly once for the frame. `refresh_effects_requiring_refresh()` may be called
+more than once when multiple systems report refresh-required timed effects;
+`process()` belongs after all of those reports.
 It then processes `post_move_effects`.
 
 Use `isinstance()` to narrow a general `RegionEffect` to the specific effect dataclass before accessing effect-specific fields.
