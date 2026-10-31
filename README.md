@@ -6,7 +6,7 @@ The project is also a way for me to rebuild my Python fluency while developing a
 
 ## Technology
 
-- Python
+- Python 3.15+
 - Pygame-CE
 - PyTMX
 - Tiled
@@ -23,7 +23,7 @@ The game currently supports:
 - terrain-based movement effects such as quicksand
 - transitions between maps using named spawn points
 - debug visualization of regions and collision areas
-- a first interactable world object: an apple tree
+- an Apple tree interaction that adds Apples to the player's inventory
 - on-screen gameplay notifications
 - map-authored NPC loading, spawning, interaction, and linear dialogue
 - automatic dialogue wrapping and pagination
@@ -33,9 +33,25 @@ The game currently supports:
   player-gold display
 - one-item buy/sell transactions with inventory-capacity and gold checks
   plus immediate shop feedback
+- a standalone player-inventory panel with keyboard navigation, item
+  descriptions, quantities, and item actions
+- character health, Apple healing, and an always-visible health/gold HUD
+- poison-cloud regions and a reusable timed-character-effect processor with
+  source refresh, optional residual time, automatic expiry, and early removal
+  by key
+- transaction sound feedback
 
-Next, Autumnwood will add a standalone player-inventory screen, then grow item
-use and other gameplay systems as the game needs them.
+Next, Autumnwood will make the world more interactable through stateful
+objects, pickups, and story-supporting world state. Combat, enemies, and
+broader RPG systems will follow when the game's content calls for them.
+
+## Run locally
+
+With [uv](https://docs.astral.sh/uv/) installed:
+
+```bash
+uv run python main.py
+```
 
 ## Documentation
 
