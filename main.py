@@ -177,13 +177,26 @@ def begin_interaction(screen: pygame.Surface,
                             
     if isinstance(target, AppleTree):
 
-        leftover = player.inventory.add_item(item_catalog.APPLE)
-        if leftover == 0:
-            note = GameNotification("You picked an apple from the tree",
+        note_msg: str = ""
+
+        if target.has_apples_to_pick() is False:
+            note_msg = "This apple tree has no apples to pick."
+            note = GameNotification(note_msg,
                                     GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
-        else:
-            note = GameNotification("Inventory full, could not add picked apple to inventory.",
-                                    GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
+
+        else: 
+            _, note_msg = target.pick_apple()
+            leftover = player.inventory.add_item(item_catalog.APPLE)
+
+            if leftover == 0:
+                note = GameNotification(note_msg,
+                                        GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
+            else:
+                # put the apple back
+                target.return_apple()
+                note_msg = "Inventory full, can't add an apple to inventory."
+                note = GameNotification(note_msg,
+                                        GameNotificationDismissPolicy.ON_MOVE_ATTEMPT)
 
         notification_panel.set_notification(note)
 
